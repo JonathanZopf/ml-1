@@ -1,7 +1,7 @@
-# Compiled class file
+# Compiled class files
 *.class
 
-# Log file
+# Log files
 *.log
 
 # BlueJ files
@@ -22,3 +22,50 @@
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
 replay_pid*
+
+# IntelliJ IDEA specific files
+.idea/
+*.iml
+*.iws
+out/
+*.ipr
+
+# Gradle
+.gradle/
+
+# Ignore all the .DS_Store files created by MacOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Thumbnails
+._*
+
+# Folder settings
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Icon must end with two \r
+Icon
+
+# The networked filesystems
+.Network Trash Folder
+.TemporaryItems
+.apdisk
+
+# Temporary files
+*.swp
+*.swo
+*.tmp
+*.bak
+*~
+
+# Compiled Java classes and package files
+bin/
+target/
+build/
