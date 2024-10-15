@@ -15,7 +15,6 @@ data class SignColor(private val approximatedColor: ApproximatedColor, private v
         require(shareLeft + shareRight == 1.0) { "Share left and right must sum up to 1" }
         require(shareLeft >= 0) { "Share left must be greater or equal to 0" }
         require(shareRight >= 0) { "Share right must be greater or equal to 0" }
-        require(shareLeft + shareRight == shareOnTotalSign) { "Share left and right must sum up to shareOnTotalSign" }
     }
 
     fun getApproximatedColor(): ApproximatedColor = approximatedColor

@@ -20,7 +20,7 @@ fun analyzeColors(croppedSign: Mat) : List<SignColor>{
 
     // Get the approximated colors and initialize the map with 0.0 share
     val approximatedColors = mutableMapOf<ApproximatedColor, Double>().apply {
-        ApproximatedColor.entries.forEach { put(it, 0.0) }  // Initialize with 0.0
+        ApproximatedColor.entries.forEach { put(it, .0) }  // Initialize with 0.0
     }
 
     // For each color on the sign, approximate it and add the share to the corresponding approximated color
@@ -45,10 +45,12 @@ fun analyzeColors(croppedSign: Mat) : List<SignColor>{
 fun getAllColorsWithShareOfSign(croppedSign: Mat) : List<Pair<Color, Double>> {
     // Count the occurrences of each color and save the count of pixels in a hashmap
     val counted = HashMap<Color, Int>()
+    var nonTransparentPixels = 0
     for (row in 0 until croppedSign.rows()) {
         for (col in 0 until croppedSign.cols()) {
             val pixel = croppedSign.get(row, col)
             if (pixel[3] > 0) {
+                nonTransparentPixels++
                 val color = Color(pixel[2].toInt(), pixel[1].toInt(), pixel[0].toInt())
                 counted[color] = counted.getOrDefault(color, 0) + 1
             }
@@ -56,9 +58,8 @@ fun getAllColorsWithShareOfSign(croppedSign: Mat) : List<Pair<Color, Double>> {
     }
 
     // Calculate the share of each color on the sign and return it as a list
-    val totalPixels = croppedSign.rows() * croppedSign.cols()
     return counted.map { (color, count) ->
-        val share = (count.toDouble() / totalPixels) * 100.0
+        val share = (count.toDouble() / nonTransparentPixels)
         Pair(color, share)
     }
 }

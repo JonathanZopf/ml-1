@@ -7,7 +7,8 @@ import org.opencv.imgcodecs.Imgcodecs
 fun main() {
     println("Hello World!")
     OpenCV.loadShared()
-    val sign = Imgcodecs.imread("/Users/jonathan/Downloads/X-10Y-10.bmp")
-    val signProperties = analyzeSign(sign)
-    println(signProperties.toJson())
+    val signs = loadImagesLazily("/Users/jonathan/Downloads/Verkehrszeichen")
+    signs.forEachIndexed() { index, sign ->
+        analyzeSign(sign, "/Users/jonathan/Downloads/Verkehrszeichen/processed/$index.jpg")
+    }
 }
