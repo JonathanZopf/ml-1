@@ -1,5 +1,6 @@
 package org.hszg.sign_analyzer
 
+import analyzeColors
 import org.hszg.sign_cropper.cropSignWithTransparency
 import org.opencv.core.*
 import org.opencv.imgcodecs.Imgcodecs

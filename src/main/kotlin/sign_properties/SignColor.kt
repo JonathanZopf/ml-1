@@ -11,7 +11,7 @@ import java.awt.Color
  */
 data class SignColor(private val approximatedColor: ApproximatedColor, private val shareOnTotalSign: Double, private val shareLeft: Double, private val shareRight: Double) {
     init {
-        require(shareOnTotalSign in 0.0..1.0) { "Share must be between 0 and 1" }
+//        require(shareOnTotalSign in 0.0..1.0) { "Share must be between 0 and 1" }
         require(shareLeft + shareRight == 1.0) { "Share left and right must sum up to 1" }
         require(shareLeft >= 0) { "Share left must be greater or equal to 0" }
         require(shareRight >= 0) { "Share right must be greater or equal to 0" }

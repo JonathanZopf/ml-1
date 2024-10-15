@@ -10,7 +10,7 @@ import kotlin.math.sqrt
  * @param standardColor The standard color of the approximated color. Used to calculate the distance of a pixel's color to the standard color.
  */
 enum class ApproximatedColor(private val standardColor: Color) {
-    RED(Color(216, 113, 93)), YELLOW(Color(249, 169, 0)), GREEN(Color(35, 127, 82)), BLUE(Color(142, 186, 232)), WHITE(Color.WHITE), BLACK(Color.BLACK);
+    RED(Color.red), YELLOW(Color.yellow), BLUE(Color.blue), WHITE(Color.white), BLACK(Color.black);
 
     /**
      * Calculate the distance of a pixel's color to the standard color.

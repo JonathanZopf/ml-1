@@ -1,11 +1,16 @@
-package org.hszg.sign_analyzer
-
 import org.hszg.sign_properties.ApproximatedColor
 import org.hszg.sign_properties.SignColor
-import org.opencv.core.Mat
-import org.opencv.core.Scalar
+import org.opencv.core.*
+import org.opencv.imgcodecs.Imgcodecs
+import org.opencv.imgproc.CLAHE
 import org.opencv.imgproc.Imgproc
 import java.awt.Color
+import java.awt.Image
+import java.util.*
+import kotlin.collections.HashMap
+import kotlin.math.abs
+import kotlin.math.pow
+import kotlin.math.sqrt
 
 /**
  * Analyzes the colors of a cropped sign and returns a list of SignColor objects.
@@ -15,6 +20,7 @@ import java.awt.Color
  * @return A list of SignColor objects representing the colors on the sign.
  */
 fun analyzeColors(croppedSign: Mat) : List<SignColor>{
+    normalizeBrightness(croppedSign)
     // Get all colors (java color) on the sign and their share
     val colorShareUnapproximated = getAllColorsWithShareOfSign(croppedSign)
 
@@ -64,18 +70,88 @@ fun getAllColorsWithShareOfSign(croppedSign: Mat) : List<Pair<Color, Double>> {
     }
 }
 
+
 /**
  * Approximates a given color to the closest color from the [ApproximatedColor] enum.
  * @param originalColor The color to approximate.
  * @return The approximated color from the [ApproximatedColor] enum.
  */
-fun approximateColor(originalColor: Color) : ApproximatedColor {
+fun approximateColor(color: Color) : ApproximatedColor {
+    // First check if the color is a shade of gray and return black or white if it is
+    // For this, check if the deviation of the color is small
+    val numbers = listOf(color.red.toDouble(), color.green.toDouble(), color.blue.toDouble())
+    val mean = numbers.average()
+    val variance = numbers.map { (it - mean).pow(2) }.average()
+    val deviation = sqrt(variance)
+    if (deviation < 3) {
+        // Check the mean to determine if the color is black or white
+        if (mean < 100) {
+            return ApproximatedColor.BLACK
+        } else {
+            return ApproximatedColor.WHITE
+        }
+    }
+
     var bestMatch = Pair(ApproximatedColor.RED, Double.MAX_VALUE)
     for (approximatedColor in ApproximatedColor.entries) {
-        val distance = approximatedColor.calculateDistanceFromColor(originalColor)
+        if (approximatedColor == ApproximatedColor.BLACK || approximatedColor == ApproximatedColor.WHITE) {
+            continue
+        }
+        val distance = approximatedColor.calculateDistanceFromColor(color)
         if (distance < bestMatch.second) {
             bestMatch = Pair(approximatedColor, distance)
         }
     }
     return bestMatch.first
+}
+
+fun automaticBrightnessAndContrast(image: Mat, clipHistPercent: Double = 1.0): Mat {
+    val gray = Mat()
+    // Convert image to grayscale
+    Imgproc.cvtColor(image, gray, Imgproc.COLOR_BGR2GRAY)
+
+    // Calculate grayscale histogram
+    val histSize = MatOfInt(256)
+    val histRange = MatOfFloat(0f, 256f)
+    val hist = Mat()
+    Imgproc.calcHist(listOf(gray), MatOfInt(0), Mat(), hist, histSize, histRange)
+
+    val accumulator = mutableListOf<Double>()
+    accumulator.add(hist.get(0, 0)[0])
+
+    // Calculate cumulative distribution from the histogram
+    for (i in 1 until hist.rows()) {
+        accumulator.add(accumulator[i - 1] + hist.get(i, 0)[0])
+    }
+
+    // Locate points to clip
+    val maximum = accumulator.last()
+    var clipHistPercent = clipHistPercent * (maximum / 100.0) / 2.0
+
+    // Locate left cut
+    var minimumGray = 0
+    while (accumulator[minimumGray] < clipHistPercent) {
+        minimumGray++
+    }
+
+    // Locate right cut
+    var maximumGray = accumulator.size - 1
+    while (accumulator[maximumGray] >= maximum - clipHistPercent) {
+        maximumGray--
+    }
+
+    // Calculate alpha and beta
+    val alpha = 255.0 / (maximumGray - minimumGray)
+    val beta = -minimumGray * alpha
+
+    // Adjust image brightness and contrast
+    val autoResult = Mat()
+    image.convertTo(autoResult, CvType.CV_8UC3, alpha, beta)
+
+    return autoResult
+}
+fun normalizeBrightness(originalImage: Mat): Mat {
+    val adjustedImage = automaticBrightnessAndContrast(originalImage)
+    Imgcodecs.imwrite("/Users/jonathan/Downloads/Verkehrszeichen/debug/adj_"+System.currentTimeMillis()+".jpg", adjustedImage)
+    return adjustedImage
 }
