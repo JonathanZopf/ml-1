@@ -2,18 +2,24 @@ package org.hszg.sign_analyzer
 
 import analyzeColors
 import analyzeColorsLeftRight
+import org.hszg.sign_analyzer.ColorChangeAnalyzer.analyzeColorChange
 import org.hszg.sign_analyzer.line_finder.findHorizontalLine
 import org.hszg.sign_analyzer.line_finder.findVerticalLine
 import org.hszg.sign_analyzer.shape_recognizer.recognizeShape
 import org.hszg.sign_cropper.cropSignWithTransparency
+import org.hszg.sign_properties.SignProperties
 import org.opencv.core.*
 import org.opencv.imgcodecs.Imgcodecs
 import org.opencv.imgproc.Imgproc
 import java.io.File
 import kotlin.math.roundToInt
 
+data class FeatureVector(
+    val colorShares: Map<String, Double>,
+    val extremities: List<Double>
+)
 
-fun analyzeSign(sign: Mat, debugProcessedFileLocation: String?) {
+fun analyzeSign(sign: Mat, debugProcessedFileLocation: String?): SignProperties {
     val croppedSign = cropSignWithTransparency(sign)
     val extremities = findExtremities(sign)
     val horizontalLine = findHorizontalLine(extremities)
@@ -62,6 +68,11 @@ fun analyzeSign(sign: Mat, debugProcessedFileLocation: String?) {
         Imgproc.drawContours(sign, listOf(MatOfPoint(horizontalLine.first, horizontalLine.second), MatOfPoint(verticalLine.first, verticalLine.second)), -1, Scalar(0.0, 255.0, 0.0), 10)
 
         Imgcodecs.imwrite(debugProcessedFileLocation, sign)
+
     }
+    return SignProperties(
+        colors = colorsTotalSign,
+        shape = recognizeShape(extremities)
+    )
 }
 
