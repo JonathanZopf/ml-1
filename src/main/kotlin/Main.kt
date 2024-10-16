@@ -1,5 +1,6 @@
 package org.hszg
 
+import com.google.gson.Gson
 import nu.pattern.OpenCV
 import org.hszg.sign_analyzer.analyzeSign
 
@@ -12,16 +13,15 @@ fun main() {
         "C:/Users/Praktikant/Downloads/Verkehrszeichen/processed/$index.jpg")
 
         // Read data from the SignProperties object
-        val colors = signProperties.getColors().map { it.getShareOnSign() }
-        val colorsLeft = signProperties.getColorsLeft().map { it.getShareOnSign() }
-        val colorsRight = signProperties.getColorsRight().map { it.getShareOnSign() }
+        val colors = signProperties.getColors().map { it.getShareOnSign() }.toList()
+        val colorsLeft = signProperties.getColorsLeft().map { it.getShareOnSign() }.toList()
+        val colorsRight = signProperties.getColorsRight().map { it.getShareOnSign() }.toList()
         val shape = signProperties.getShape().ordinal
 
         // Print the data
-
-
-
-        println("Sign $index: ,Color Shares: $colors,colors Left: $colorsLeft, colors Right: $colorsRight, Shape:$shape")
-
+        val gson = Gson()
+        val finalFeatures = listOf(colors, colorsLeft, colorsRight, listOf(shape.toDouble())).flatten()
+        val featureJson = gson.toJson(finalFeatures)
+        println(featureJson)
     }
 }
