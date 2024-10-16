@@ -2,7 +2,6 @@ package org.hszg.sign_analyzer
 
 import analyzeColors
 import analyzeColorsLeftRight
-import org.hszg.sign_analyzer.ColorChangeAnalyzer.analyzeColorChange
 import org.hszg.sign_analyzer.line_finder.findHorizontalLine
 import org.hszg.sign_analyzer.line_finder.findVerticalLine
 import org.hszg.sign_analyzer.shape_recognizer.recognizeShape

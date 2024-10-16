@@ -1,9 +1,7 @@
 package org.hszg
 
 import nu.pattern.OpenCV
-import org.hszg.sign_analyzer.FeatureVector
 import org.hszg.sign_analyzer.analyzeSign
-import org.opencv.imgcodecs.Imgcodecs
 
 fun main() {
     println("Hello World!")
