@@ -19,14 +19,28 @@ import kotlin.math.sqrt
  * @param croppedSign The cropped sign to analyze.
  * @return A list of SignColor objects representing the colors on the sign.
  */
-fun analyzeColors(croppedSign: Mat, extremities: MatOfPoint) : List<SignColor>{
+fun analyzeColors(croppedSign: Mat) : List<SignColor>{
     normalizeBrightness(croppedSign)
-    val colorsOnSign = getAllColorsWithShare(croppedSign)
-    return colorsOnSign.map { (color, share) ->
-        val leftShare = 0.0
-        val rightShare =1.0
-        SignColor(color, share, leftShare, rightShare)
-    }
+   return getAllColorsWithShare(croppedSign)
+}
+
+/**
+ * Splits the sign in 2 halves and calculates the share of each color on the left and right side of the sign.
+ * @param croppedSign The cropped sign to analyze.
+ * @param verticalLine The vertical line that splits the sign in 2 halves.
+ * @return A pair of SignColor objects representing the colors on the sign. The first element is the left side, the second the right side.
+ */
+fun analyzeColorsLeftRight(croppedSign: Mat, verticalLine: Pair<Point, Point>) : Pair<List<SignColor>, List<SignColor>> {
+    val leftSide = Mat()
+    val rightSide = Mat()
+    val leftSideRect = Rect(0, 0, verticalLine.first.x.toInt(), croppedSign.rows())
+    val rightSideRect = Rect(verticalLine.first.x.toInt(), 0, croppedSign.cols() - verticalLine.first.x.toInt(), croppedSign.rows())
+    croppedSign.submat(leftSideRect).copyTo(leftSide)
+    croppedSign.submat(rightSideRect).copyTo(rightSide)
+
+    val leftColors = analyzeColors(leftSide)
+    val rightColors = analyzeColors(rightSide)
+    return Pair(leftColors, rightColors)
 }
 
 /**
@@ -35,7 +49,7 @@ fun analyzeColors(croppedSign: Mat, extremities: MatOfPoint) : List<SignColor>{
  * @param partToAnalyze The part of the sign to analyze. Can be the whole sign or a part of it.
  * @return A list of pairs, each containing an approximated color and its share on the sign.
  */
-fun getAllColorsWithShare(partToAnalyze: Mat) : List<Pair<ApproximatedColor, Double>> {
+fun getAllColorsWithShare(partToAnalyze: Mat) : List<SignColor> {
     // Count the occurrences of each color and save the count of pixels in a hashmap
     val counted = HashMap<ApproximatedColor, Int>()
     var nonTransparentPixels = 0
@@ -53,7 +67,7 @@ fun getAllColorsWithShare(partToAnalyze: Mat) : List<Pair<ApproximatedColor, Dou
     // Calculate the share of each color on the sign and return it as a list
     return counted.map { (color, count) ->
         val share = (count.toDouble() / nonTransparentPixels)
-        Pair(color, share)
+        SignColor(color, share)
     }
 }
 
@@ -91,6 +105,14 @@ private fun getApproximatedColor(color: Color) : ApproximatedColor {
     }
     return bestMatch.first
 }
+
+/**
+ * Normalizes the brightness of an image.
+ * Stolen from https://stackoverflow.com/questions/56905592/automatic-contrast-and-brightness-adjustment-of-a-color-photo-of-a-sheet-of-pape
+ * @param originalSign The original sign image.
+ * @param clipHistPercent The percentage of the histogram to clip.
+ * @return The normalized image.
+ */
 private fun normalizeBrightness(originalSign: Mat, clipHistPercent: Double = 1.0): Mat {
     val gray = Mat()
     // Convert image to grayscale
