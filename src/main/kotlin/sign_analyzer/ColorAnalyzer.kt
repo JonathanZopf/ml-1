@@ -19,45 +19,32 @@ import kotlin.math.sqrt
  * @param croppedSign The cropped sign to analyze.
  * @return A list of SignColor objects representing the colors on the sign.
  */
-fun analyzeColors(croppedSign: Mat) : List<SignColor>{
+fun analyzeColors(croppedSign: Mat, extremities: MatOfPoint) : List<SignColor>{
     normalizeBrightness(croppedSign)
-    // Get all colors (java color) on the sign and their share
-    val colorShareUnapproximated = getAllColorsWithShareOfSign(croppedSign)
-
-    // Get the approximated colors and initialize the map with 0.0 share
-    val approximatedColors = mutableMapOf<ApproximatedColor, Double>().apply {
-        ApproximatedColor.entries.forEach { put(it, .0) }  // Initialize with 0.0
-    }
-
-    // For each color on the sign, approximate it and add the share to the corresponding approximated color
-    for (currentColor in colorShareUnapproximated) {
-        val approximatedColor = approximateColor(currentColor.first)
-        // Update the map by adding the share to the corresponding approximated color
-        approximatedColors[approximatedColor] = approximatedColors[approximatedColor]!! + currentColor.second
-    }
-
-    // Return the result as a list of SignColor objects
-    // TODO Calculate the share of the colors on the left and right side of the sign
-    return approximatedColors.toList().map { (approximatedColor, share) ->
-        SignColor(approximatedColor, share, 1.0, 0.0)
+    val colorsOnSign = getAllColorsWithShare(croppedSign)
+    return colorsOnSign.map { (color, share) ->
+        val leftShare = 0.0
+        val rightShare =1.0
+        SignColor(color, share, leftShare, rightShare)
     }
 }
 
 /**
- * Finds all colors on a sign and calculates their share on the sign.
- * @param croppedSign The cropped sign to analyze.
- * @return A list of pairs containing the color (Java color) and its share on the sign.
+ * Analyzes the colors of a sign (or a part) and returns a list of approximated colors with their share on the sign.
+ * Finds all colors on the sign and approximates them to the closest color from the ApproximatedColor enum.
+ * @param partToAnalyze The part of the sign to analyze. Can be the whole sign or a part of it.
+ * @return A list of pairs, each containing an approximated color and its share on the sign.
  */
-fun getAllColorsWithShareOfSign(croppedSign: Mat) : List<Pair<Color, Double>> {
+fun getAllColorsWithShare(partToAnalyze: Mat) : List<Pair<ApproximatedColor, Double>> {
     // Count the occurrences of each color and save the count of pixels in a hashmap
-    val counted = HashMap<Color, Int>()
+    val counted = HashMap<ApproximatedColor, Int>()
     var nonTransparentPixels = 0
-    for (row in 0 until croppedSign.rows()) {
-        for (col in 0 until croppedSign.cols()) {
-            val pixel = croppedSign.get(row, col)
+    for (row in 0 until partToAnalyze.rows()) {
+        for (col in 0 until partToAnalyze.cols()) {
+            val pixel = partToAnalyze.get(row, col)
             if (pixel[3] > 0) {
                 nonTransparentPixels++
-                val color = Color(pixel[2].toInt(), pixel[1].toInt(), pixel[0].toInt())
+                val color = getApproximatedColor(Color(pixel[2].toInt(), pixel[1].toInt(), pixel[0].toInt()))
                 counted[color] = counted.getOrDefault(color, 0) + 1
             }
         }
@@ -72,11 +59,11 @@ fun getAllColorsWithShareOfSign(croppedSign: Mat) : List<Pair<Color, Double>> {
 
 
 /**
- * Approximates a given color to the closest color from the [ApproximatedColor] enum.
- * @param originalColor The color to approximate.
- * @return The approximated color from the [ApproximatedColor] enum.
+ * Approximates a color to the closest color from the [ApproximatedColor] enum.
+ * @param color The color to approximate.
+ * @return The approximated color.
  */
-fun approximateColor(color: Color) : ApproximatedColor {
+private fun getApproximatedColor(color: Color) : ApproximatedColor {
     // First check if the color is a shade of gray and return black or white if it is
     // For this, check if the deviation of the color is small
     val numbers = listOf(color.red.toDouble(), color.green.toDouble(), color.blue.toDouble())
@@ -91,7 +78,7 @@ fun approximateColor(color: Color) : ApproximatedColor {
             return ApproximatedColor.WHITE
         }
     }
-
+    // If the color is not black or white, approximate it to the closest color
     var bestMatch = Pair(ApproximatedColor.RED, Double.MAX_VALUE)
     for (approximatedColor in ApproximatedColor.entries) {
         if (approximatedColor == ApproximatedColor.BLACK || approximatedColor == ApproximatedColor.WHITE) {
@@ -104,11 +91,10 @@ fun approximateColor(color: Color) : ApproximatedColor {
     }
     return bestMatch.first
 }
-
-fun automaticBrightnessAndContrast(image: Mat, clipHistPercent: Double = 1.0): Mat {
+private fun normalizeBrightness(originalSign: Mat, clipHistPercent: Double = 1.0): Mat {
     val gray = Mat()
     // Convert image to grayscale
-    Imgproc.cvtColor(image, gray, Imgproc.COLOR_BGR2GRAY)
+    Imgproc.cvtColor(originalSign, gray, Imgproc.COLOR_BGRA2GRAY)
 
     // Calculate grayscale histogram
     val histSize = MatOfInt(256)
@@ -146,12 +132,7 @@ fun automaticBrightnessAndContrast(image: Mat, clipHistPercent: Double = 1.0): M
 
     // Adjust image brightness and contrast
     val autoResult = Mat()
-    image.convertTo(autoResult, CvType.CV_8UC3, alpha, beta)
+    originalSign.convertTo(autoResult, CvType.CV_8UC1, alpha, beta)
 
     return autoResult
-}
-fun normalizeBrightness(originalImage: Mat): Mat {
-    val adjustedImage = automaticBrightnessAndContrast(originalImage)
-    Imgcodecs.imwrite("/Users/jonathan/Downloads/Verkehrszeichen/debug/adj_"+System.currentTimeMillis()+".jpg", adjustedImage)
-    return adjustedImage
 }
