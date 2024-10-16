@@ -14,11 +14,6 @@ import org.opencv.imgproc.Imgproc
 import java.io.File
 import kotlin.math.roundToInt
 
-data class FeatureVector(
-    val colorShares: Map<String, Double>,
-    val extremities: List<Double>
-)
-
 fun analyzeSign(sign: Mat, debugProcessedFileLocation: String?): SignProperties {
     val croppedSign = cropSignWithTransparency(sign)
     val extremities = findExtremities(sign)
@@ -72,7 +67,9 @@ fun analyzeSign(sign: Mat, debugProcessedFileLocation: String?): SignProperties 
     }
     return SignProperties(
         colors = colorsTotalSign,
-        shape = recognizeShape(extremities)
+        shape = recognizeShape(extremities),
+        colorsLeft = colorsLeftRight.first,
+        colorsRight = colorsLeftRight.second
     )
 }
 

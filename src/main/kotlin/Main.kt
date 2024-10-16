@@ -15,10 +15,15 @@ fun main() {
 
         // Read data from the SignProperties object
         val colors = signProperties.getColors().map { it.getShareOnSign() }
+        val colorsLeft = signProperties.getColorsLeft().map { it.getShareOnSign() }
+        val colorsRight = signProperties.getColorsRight().map { it.getShareOnSign() }
         val shape = signProperties.getShape().ordinal
 
+        // Print the data
 
 
-        println("Sign $index: ,Color Shares: $colors, Shape: $shape")
+
+        println("Sign $index: ,Color Shares: $colors,colors Left: $colorsLeft, colors Right: $colorsRight, Shape:$shape")
+
     }
 }
