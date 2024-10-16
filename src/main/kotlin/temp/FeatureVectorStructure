@@ -1,0 +1,33 @@
+Aufbau des Feature Vectors:
+
+colorShares:
+1. Wert: Anteil der Farbe Rot
+2. Wert: Anteil der Farbe Gelb
+3. Wert: Anteil der Farbe Grün
+4. Wert: Anteil der Farbe Blau
+5. Wert: Anteil der Farbe Weiß
+6. Wert: Anteil der Farbe Schwarz
+
+colorShares Left:
+7.
+8.
+9.
+10.
+11.
+12.
+
+colorShares Right:
+13.
+14.
+15.
+16.
+17.
+18.
+
+
+
+extremities:
+19. Shape
+
+
+
