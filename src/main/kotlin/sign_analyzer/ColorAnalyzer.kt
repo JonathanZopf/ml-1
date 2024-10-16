@@ -52,6 +52,9 @@ fun analyzeColorsLeftRight(croppedSign: Mat, verticalLine: Pair<Point, Point>) :
 fun getAllColorsWithShare(partToAnalyze: Mat) : List<SignColor> {
     // Count the occurrences of each color and save the count of pixels in a hashmap
     val counted = HashMap<ApproximatedColor, Int>()
+    for (approximatedColor in ApproximatedColor.entries) {
+        counted[approximatedColor] = 0
+    }
     var nonTransparentPixels = 0
     for (row in 0 until partToAnalyze.rows()) {
         for (col in 0 until partToAnalyze.cols()) {
@@ -59,7 +62,7 @@ fun getAllColorsWithShare(partToAnalyze: Mat) : List<SignColor> {
             if (pixel[3] > 0) {
                 nonTransparentPixels++
                 val color = getApproximatedColor(Color(pixel[2].toInt(), pixel[1].toInt(), pixel[0].toInt()))
-                counted[color] = counted.getOrDefault(color, 0) + 1
+                counted[color] = counted.get(color)!! + 1
             }
         }
     }
