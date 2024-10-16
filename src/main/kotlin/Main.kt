@@ -9,9 +9,9 @@ fun main() {
     println("Starting sign analysis")
     OpenCV.loadShared()
     val signs = loadSigns()
-    signs.forEachIndexed() { index, sign ->
+    signs.forEach { sign ->
         try {
-            analyzeSign(sign.image, "/Users/jonathan/Downloads/Verkehrszeichen/processed/$index.jpg")
+            analyzeSign(sign)
         } catch (e: SignAnalysisException) {
             println(e.message)
             println("An error occurred while analyzing sign "+ sign.path)
