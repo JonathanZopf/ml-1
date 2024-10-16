@@ -22,4 +22,8 @@ class SignProperties(private val colors: List<SignColor>, private val shape: Sig
     fun getShape(): SignShape = shape
     fun getColorsLeft(): List<SignColor> = colorsLeft
     fun getColorsRight(): List<SignColor> = colorsRight
+
+    fun toFeatureVector() : List<Double> {
+        return listOf(colors.map { it.getShareOnSign() }, colorsLeft.map { it.getShareOnSign() }, colorsRight.map { it.getShareOnSign() }, listOf(shape.ordinal.toDouble())).flatten()
+    }
 }
