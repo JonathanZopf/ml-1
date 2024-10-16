@@ -2,6 +2,7 @@ package org.hszg.sign_analyzer
 
 import analyzeColors
 import analyzeColorsLeftRight
+import org.hszg.LoadedSign
 import org.hszg.sign_analyzer.line_finder.findHorizontalLine
 import org.hszg.sign_analyzer.line_finder.findVerticalLine
 import org.hszg.sign_analyzer.shape_recognizer.recognizeShape
@@ -13,7 +14,9 @@ import org.opencv.imgproc.Imgproc
 import java.io.File
 import kotlin.math.roundToInt
 
-fun analyzeSign(sign: Mat, debugProcessedFileLocation: String?): SignProperties {
+@Throws(SignAnalysisException::class)
+fun analyzeSign(loadedSign: LoadedSign, writeDebugImage : Boolean = false) : SignProperties {
+    val sign = loadedSign.image
     val croppedSign = cropSignWithTransparency(sign)
     val extremities = findExtremities(sign)
     val horizontalLine = findHorizontalLine(extremities)
@@ -22,7 +25,11 @@ fun analyzeSign(sign: Mat, debugProcessedFileLocation: String?): SignProperties 
     val colorsTotalSign = analyzeColors(croppedSign)
     val colorsLeftRight = analyzeColorsLeftRight(croppedSign, verticalLine)
 
-    if (debugProcessedFileLocation != null) {
+    if (writeDebugImage) {
+        val classloader = Thread.currentThread().contextClassLoader
+        val fileLocationFile = classloader.getResourceAsStream("debug_output_location.txt")
+            ?: throw IllegalArgumentException("There is no debug_output_location in the resources folder")
+        val debugProcessedFileLocation = fileLocationFile.bufferedReader().use { it.readText() } + System.currentTimeMillis() + ".jpg"
         // Check if the directory exists
         val directory = File(debugProcessedFileLocation.substringBeforeLast("/"))
         if (!directory.exists()) {

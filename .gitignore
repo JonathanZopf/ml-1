@@ -69,3 +69,6 @@ Icon
 bin/
 target/
 build/
+
+# Resources not committed because they contain paths that are specific to the local machine
+resources/
