@@ -30,13 +30,18 @@ fun findExtremities(inputImage: Mat): MatOfPoint {
 
     // Assume the largest contour is the traffic sign
     var largestContour: MatOfPoint? = null
-    var largestArea = 0.0
+    var largestArea = Double.MIN_VALUE
     for (contour in contours) {
         val area = Imgproc.contourArea(contour)
         if (area > largestArea) {
             largestArea = area
             largestContour = contour
         }
+    }
+
+    // If no contour was found, return an empty MatOfPoint
+    if (largestContour == null) {
+       throw SignAnalysisException("No contour found")
     }
 
     // Convert MatOfPoint (integer) to MatOfPoint2f (floating point)

@@ -12,7 +12,7 @@ import org.opencv.imgproc.Imgproc
 import java.io.File
 import kotlin.math.roundToInt
 
-
+@Throws(SignAnalysisException::class)
 fun analyzeSign(sign: Mat, debugProcessedFileLocation: String?) {
     val croppedSign = cropSignWithTransparency(sign)
     val extremities = findExtremities(sign)
