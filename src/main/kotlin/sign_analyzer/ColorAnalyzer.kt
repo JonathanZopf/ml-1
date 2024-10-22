@@ -33,8 +33,12 @@ fun analyzeColors(croppedSign: Mat) : List<SignColor>{
 fun analyzeColorsLeftRight(croppedSign: Mat, verticalLine: Pair<Point, Point>) : Pair<List<SignColor>, List<SignColor>> {
     val leftSide = Mat()
     val rightSide = Mat()
-    val leftSideRect = Rect(0, 0, verticalLine.first.x.toInt(), croppedSign.rows())
-    val rightSideRect = Rect(verticalLine.first.x.toInt(), 0, croppedSign.cols() - verticalLine.first.x.toInt(), croppedSign.rows())
+
+    //Ensure that the line stays within the image frame
+    val verticalX = verticalLine.first.x.toInt().coerceIn(0,croppedSign.cols())
+
+    val leftSideRect = Rect(0, 0, verticalX, croppedSign.rows())
+    val rightSideRect = Rect(verticalX, 0, croppedSign.cols() - verticalX, croppedSign.rows())
     croppedSign.submat(leftSideRect).copyTo(leftSide)
     croppedSign.submat(rightSideRect).copyTo(rightSide)
 
@@ -117,6 +121,10 @@ private fun getApproximatedColor(color: Color) : ApproximatedColor {
  * @return The normalized image.
  */
 private fun normalizeBrightness(originalSign: Mat, clipHistPercent: Double = 1.0): Mat {
+
+    if (originalSign.empty()){
+        throw IllegalArgumentException("The input image is empty")
+    }
     val gray = Mat()
     // Convert image to grayscale
     Imgproc.cvtColor(originalSign, gray, Imgproc.COLOR_BGRA2GRAY)
