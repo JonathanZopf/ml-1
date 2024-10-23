@@ -2,6 +2,7 @@ package org.hszg
 
 import nu.pattern.OpenCV
 import org.hszg.classification.classificationTest
+import org.hszg.learner_implementations.KNearestNeighbor
 import org.hszg.sign_analyzer.SignAnalysisException
 import org.hszg.sign_analyzer.analyzeSign
 import org.hszg.training.TrainingData
@@ -9,7 +10,7 @@ import org.hszg.training.readTrainingData
 import org.hszg.training.writeTrainingData
 
 fun main() {
-    OpenCV.loadShared()
+    OpenCV.loadLocally()
     println("Do you want to train the model(t) or classify the model (c)?")
     val input = readlnOrNull()
     when (input) {
@@ -27,14 +28,17 @@ fun main() {
         }
         "c" -> {
             val signs = loadSignsForTesting()
-            val trainingData = readTrainingData()
+            val trainingData = readTrainingData().toSet()
             var successfullyClassifiedSignCount = 0
             var totalSignCount = 0
+
+            val learnerImplementation = KNearestNeighbor()
+            learnerImplementation.learn(trainingData)
 
             signs.forEach { sign ->
                 try {
                     val signProperties = analyzeSign(sign)
-                    val classification = classifySignFromProperties(trainingData, signProperties)
+                    val classification = learnerImplementation.classify(signProperties.toFeatureVector())
                     println("Sign ${sign.path} is classified as $classification")
                     if (classification == sign.classification) {
                         successfullyClassifiedSignCount++
