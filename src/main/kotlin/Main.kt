@@ -31,8 +31,7 @@ fun main() {
             val k = 3
             val classification = kNearestNeighbors(trainingData, inputVector, k)
             println("Sign ${sign.path} is classified as $classification")
-//            classificationTest.setTestData(sign, classification)
-//            classificationTest.testSignClassification()
+            classificationTest().testSignClassification(sign, classification)
 
         } catch (e: SignAnalysisException) {
             println(e.message)
