@@ -5,13 +5,13 @@ import org.hszg.SignClassification
 
 class classificationTest{
 
-    fun testSignClassification(sign: LoadedSign, classification: SignClassification): Int{
+    fun testSignClassification(sign: LoadedSign, classification: SignClassification): Boolean{
         val expectedClassification = sign.classification
         val actualClassification = classification
         if (expectedClassification == actualClassification){
-            return 1
+            return true
         } else {
-            return 0
+            return false
         }
     }
 }
