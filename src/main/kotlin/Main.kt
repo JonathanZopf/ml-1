@@ -14,6 +14,8 @@ fun main() {
     println("Starting sign analysis")
     OpenCV.loadLocally()
     val signs = loadSigns()
+    var countCorrectSigns = 0
+    var count = 0
 //    val classificationTest = classificationTest()
     signs.forEach { sign ->
         try {
@@ -31,11 +33,13 @@ fun main() {
             val k = 3
             val classification = kNearestNeighbors(trainingData, inputVector, k)
             println("Sign ${sign.path} is classified as $classification")
-            classificationTest().testSignClassification(sign, classification)
+            countCorrectSigns += classificationTest().testSignClassification(sign, classification)
+            count++
 
         } catch (e: SignAnalysisException) {
             println(e.message)
             println("An error occurred while analyzing sign "+ sign.path)
         }
     }
+    println("$countCorrectSigns Signs were classified correctly from $count signs.")
 }
