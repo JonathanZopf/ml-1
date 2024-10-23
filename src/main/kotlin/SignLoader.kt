@@ -4,14 +4,28 @@ import org.opencv.core.Mat
 import org.opencv.imgcodecs.Imgcodecs
 import java.io.File
 
-
+/**
+ * Loads all signs for training. Makes 50% of the signs available for training.
+ * @return A sequence of [LoadedSign] objects.
+ **/
+fun loadSignsForTraining() = loadSigns(0)
+/**
+ * Loads all signs for testing. Makes 50% of the signs available for testing.
+ * @return A sequence of [LoadedSign] objects.
+ **/
+fun loadSignsForTesting() = loadSigns(1)
 /**
  * Loads all signs from a specified directory.
  * The location to the parent directory is specified in the resources folder in a file called file_location.txt.
  * The file_location.txt file should contain the absolute path to the parent directory.
+ * @param remainder The remainder of the index of the sign to load. Must be 0 or 1.
  * @return A sequence of [LoadedSign] objects.
  */
-fun loadSigns(): Sequence<LoadedSign> {
+fun loadSigns(remainder: Int): Sequence<LoadedSign> {
+    if (remainder !in 0..1) {
+        throw IllegalArgumentException("Invalid remainder: $remainder")
+    }
+
     // Get the uri of the parent directory from the resources folder
     val classloader = Thread.currentThread().contextClassLoader
     val fileLocationFile = classloader.getResourceAsStream("file_location.txt")
@@ -34,11 +48,18 @@ fun loadSigns(): Sequence<LoadedSign> {
             val path = dir.absolutePath
             val signClass = SignClassification.valueOf(dir.name)
             val signImages = loadAllSignsInDirLazy(dir)
-            signImages.forEach { signImage -> yield(LoadedSign(
-                path = path,
-                classification = signClass,
-                image = signImage
-            )) }
+            signImages.forEachIndexed { index, signImage ->
+                if ((index % 2) == remainder) {
+                    return@forEachIndexed yield(
+                        LoadedSign(
+                            path = path,
+                            classification = signClass,
+                            image = signImage
+                        )
+                    )
+                }
+            }
+
         }
 }}
 

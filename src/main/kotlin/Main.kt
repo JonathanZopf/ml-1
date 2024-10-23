@@ -1,9 +1,7 @@
 package org.hszg
 
-import com.google.gson.Gson
 import nu.pattern.OpenCV
 import org.hszg.classification.classificationTest
-import org.hszg.classification.kNearestNeighbors
 import org.hszg.sign_analyzer.SignAnalysisException
 import org.hszg.sign_analyzer.analyzeSign
 import org.hszg.training.TrainingData
@@ -11,31 +9,48 @@ import org.hszg.training.readTrainingData
 import org.hszg.training.writeTrainingData
 
 fun main() {
-    println("Starting sign analysis")
-    OpenCV.loadLocally()
-    val signs = loadSigns()
-//    val classificationTest = classificationTest()
-    signs.forEach { sign ->
-        try {
-            val signProperties = analyzeSign(sign)
-            /**
-             * writing training data
-             */
-//            writeTrainingData(TrainingData(sign.classification, signProperties.toFeatureVector()))
-//            println(signProperties.toFeatureVector())
-            /**
-             * classify with k nearest neighbors
-             */
-            val trainingData = readTrainingData()
-            val inputVector = signProperties.toFeatureVector()
-            val k = 3
-            val classification = kNearestNeighbors(trainingData, inputVector, k)
-            println("Sign ${sign.path} is classified as $classification")
-            classificationTest().testSignClassification(sign, classification)
-
-        } catch (e: SignAnalysisException) {
-            println(e.message)
-            println("An error occurred while analyzing sign "+ sign.path)
+    OpenCV.loadShared()
+    println("Do you want to train the model(t) or classify the model (c)?")
+    val input = readlnOrNull()
+    when (input) {
+        "t" -> {
+            val signs = loadSignsForTraining()
+            signs.forEach { sign ->
+                try {
+                    val signProperties = analyzeSign(sign)
+                    writeTrainingData(TrainingData(sign.classification, signProperties.toFeatureVector()))
+                } catch (e: SignAnalysisException) {
+                    println(e.message)
+                    println("An error occurred while analyzing sign "+ sign.path)
+                }
+            }
         }
-    }
-}
+        "c" -> {
+            val signs = loadSignsForTesting()
+            val trainingData = readTrainingData()
+            var successfullyClassifiedSignCount = 0
+            var totalSignCount = 0
+
+            signs.forEach { sign ->
+                try {
+                    val signProperties = analyzeSign(sign)
+                    val classification = classifySignFromProperties(trainingData, signProperties)
+                    println("Sign ${sign.path} is classified as $classification")
+                    if (classification == sign.classification) {
+                        successfullyClassifiedSignCount++
+                        println("Sign ${sign.path} was classified correctly")
+                    } else {
+                        println("Sign ${sign.path} was classified wrongly as $classification, while the actual type is ${sign.classification}")
+                    }
+                    totalSignCount++
+                    println("Successfully classified $successfullyClassifiedSignCount out of $totalSignCount signs (${(successfullyClassifiedSignCount.toDouble() / totalSignCount.toDouble()) * 100}%)c")
+                } catch (e: SignAnalysisException) {
+                    println(e.message)
+                    println("An error occurred while analyzing sign " + sign.path)
+                }
+            }
+        }
+        else -> {
+            println("Invalid input")
+        }
+}}

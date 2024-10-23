@@ -12,7 +12,6 @@ import org.opencv.imgproc.Imgproc
  * The function uses Canny edge detection to find the edges of the traffic sign and then approximates the polygon to account for rounded corners.
  * @param inputImage The input image of the traffic sign. Should not be cropped because it doesnt work with cropped images.
  * @return The extremities of the traffic sign.
-
  */
 fun findExtremities(inputImage: Mat): MatOfPoint {
     // Convert the image to binary based on alpha channel
