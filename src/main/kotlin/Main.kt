@@ -1,7 +1,7 @@
 package org.hszg
 
 import nu.pattern.OpenCV
-import org.hszg.classification.classificationTest
+import org.hszg.learner_implementations.DecisionTree
 import org.hszg.learner_implementations.KNearestNeighbor
 import org.hszg.sign_analyzer.SignAnalysisException
 import org.hszg.sign_analyzer.analyzeSign
@@ -31,10 +31,25 @@ fun main() {
             val trainingData = readTrainingData().toSet()
             var successfullyClassifiedSignCount = 0
             var totalSignCount = 0
-
-            val learnerImplementation = KNearestNeighbor()
-            learnerImplementation.learn(trainingData)
-
+            println("Do you want to use the kNearestNeighbor-Algorithm(k) or the DecsionTree-Algorithm(d)?")
+            val inputClassification = readlnOrNull()
+            val learnerImplementation: Learner =
+            when (inputClassification) {
+                "k" -> {
+                    val learner = KNearestNeighbor()
+                    learner.learn(trainingData)
+                    learner
+                }
+                "d" -> {
+                    val learner = DecisionTree()
+                    learner.learn(trainingData)
+                    learner
+                }
+                else -> {
+                    println("Invalid input")
+                    return
+                }
+            }
             signs.forEach { sign ->
                 try {
                     val signProperties = analyzeSign(sign)
