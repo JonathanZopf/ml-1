@@ -7,6 +7,7 @@ import kotlin.math.sqrt
 
 /**
  * A k-nearest neighbor learner.
+ * The complexity of the algorithm for classification is O(n*m) with n the number of features and m the number of training data.
  */
 class KNearestNeighbor : Learner {
    private val ksToTake = 3

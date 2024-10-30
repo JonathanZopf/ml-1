@@ -5,12 +5,16 @@ import org.hszg.SignClassification
 import org.hszg.training.TrainingData
 import kotlin.math.log2
 
+/**
+ * A decision tree learner.
+ * The complexity of the algorithm for classification is O(n) with n the number of features.
+ */
 class DecisionTree : Learner {
-    var successor: Map<Number, DecisionTree> = mapOf()
-    var classification: SignClassification? = null
-    var depth: Int = 0
-    var pattern: List<Double>? = null
-    var examples: MutableList<TrainingData> = mutableListOf()
+    private var successor: Map<Number, DecisionTree> = mapOf()
+    private var classification: SignClassification? = null
+    private var depth: Int = 0
+    private var pattern: List<Double>? = null
+    private var examples: MutableList<TrainingData> = mutableListOf()
 
     override fun learn(trainingData: Set<TrainingData>) {
         trainingData.forEach { include(it)}

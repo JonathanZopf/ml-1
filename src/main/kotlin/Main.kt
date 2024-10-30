@@ -27,22 +27,20 @@ fun main() {
             }
         }
         "c" -> {
-            val signs = loadSignsForTesting()
+            val signs = loadSignsForClassificationTesting(0.001)
             val trainingData = readTrainingData().toSet()
             var successfullyClassifiedSignCount = 0
             var totalSignCount = 0
-            println("Do you want to use the kNearestNeighbor-Algorithm(k) or the DecsionTree-Algorithm(d)?")
+            println("Do you want to use the kNearestNeighbor-Algorithm(k) or the Decision-Tree-Algorithm(d)?")
             val inputClassification = readlnOrNull()
             val learnerImplementation: Learner =
             when (inputClassification) {
                 "k" -> {
                     val learner = KNearestNeighbor()
-                    learner.learn(trainingData)
                     learner
                 }
                 "d" -> {
                     val learner = DecisionTree()
-                    learner.learn(trainingData)
                     learner
                 }
                 else -> {
@@ -50,7 +48,9 @@ fun main() {
                     return
                 }
             }
+            learnerImplementation.learn(trainingData)
             signs.forEach { sign ->
+                println("–––––––––––––––Starting classification of sign ${sign.path}––––––––––––––––––")
                 try {
                     val signProperties = analyzeSign(sign)
                     val classification = learnerImplementation.classify(signProperties.toFeatureVector())
@@ -67,6 +67,7 @@ fun main() {
                     println(e.message)
                     println("An error occurred while analyzing sign " + sign.path)
                 }
+                println("–––––––––––––––Finished classification of sign ${sign.path}––––––––––––––––––")
             }
         }
         else -> {

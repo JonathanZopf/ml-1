@@ -8,24 +8,29 @@ import java.io.File
  * Loads all signs for training. Makes 50% of the signs available for training.
  * @return A sequence of [LoadedSign] objects.
  **/
-fun loadSignsForTraining() = loadSigns(0)
+fun loadSignsForTraining() = loadSigns { i -> i % 2 == 0 }
+
 /**
  * Loads all signs for testing. Makes 50% of the signs available for testing.
  * @return A sequence of [LoadedSign] objects.
  **/
-fun loadSignsForTesting() = loadSigns(1)
+fun loadSignsForClassificationTesting() = loadSigns { i -> i % 2 == 1 }
+
+/**
+ * Loads all signs for testing. Makes that the a sign is loaded with a probability of probabilityOfSelection.
+ */
+fun loadSignsForClassificationTesting(probabilityOfSelection: Double) : Sequence<LoadedSign> {
+    assert(probabilityOfSelection in 0.0..1.0)
+    return loadSigns { _ -> Math.random() < probabilityOfSelection }
+}
 /**
  * Loads all signs from a specified directory.
  * The location to the parent directory is specified in the resources folder in a file called file_location.txt.
  * The file_location.txt file should contain the absolute path to the parent directory.
- * @param remainder The remainder of the index of the sign to load. Must be 0 or 1.
+ * @param chooseSignFunction A function that decides which signs to load. The function should return true for the signs to load.
  * @return A sequence of [LoadedSign] objects.
  */
-fun loadSigns(remainder: Int): Sequence<LoadedSign> {
-    if (remainder !in 0..1) {
-        throw IllegalArgumentException("Invalid remainder: $remainder")
-    }
-
+fun loadSigns(chooseSignFunction: (Int)->Boolean): Sequence<LoadedSign> {
     // Get the uri of the parent directory from the resources folder
     val classloader = Thread.currentThread().contextClassLoader
     val fileLocationFile = classloader.getResourceAsStream("file_location.txt")
@@ -43,13 +48,14 @@ fun loadSigns(remainder: Int): Sequence<LoadedSign> {
         throw IllegalArgumentException("There are no child directories in ${parentDir.absolutePath}")
     }
 
+    var totalIndex = 0
     return sequence {
         for (dir in childDir) {
             val path = dir.absolutePath
             val signClass = SignClassification.valueOf(dir.name)
             val signImages = loadAllSignsInDirLazy(dir)
             signImages.forEachIndexed { index, signImage ->
-                if ((index % 2) == remainder) {
+                if (chooseSignFunction(totalIndex + index)) {
                     return@forEachIndexed yield(
                         LoadedSign(
                             path = path,
@@ -59,6 +65,7 @@ fun loadSigns(remainder: Int): Sequence<LoadedSign> {
                     )
                 }
             }
+            totalIndex += signImages.count()
 
         }
 }}
