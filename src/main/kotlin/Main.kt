@@ -1,6 +1,7 @@
 package org.hszg
 
 import nu.pattern.OpenCV
+import org.hszg.classification.classificationTest
 import org.hszg.learner_implementations.DecisionTree
 import org.hszg.learner_implementations.KNearestNeighbor
 import org.hszg.sign_analyzer.SignAnalysisException
@@ -29,8 +30,6 @@ fun main() {
         "c" -> {
             val signs = loadSignsForClassificationTesting(0.001)
             val trainingData = readTrainingData().toSet()
-            var successfullyClassifiedSignCount = 0
-            var totalSignCount = 0
             println("Do you want to use the kNearestNeighbor-Algorithm(k) or the Decision-Tree-Algorithm(d)?")
             val inputClassification = readlnOrNull()
             val learnerImplementation: Learner =
@@ -56,19 +55,19 @@ fun main() {
                     val classification = learnerImplementation.classify(signProperties.toFeatureVector())
                     println("Sign ${sign.path} is classified as $classification")
                     if (classification == sign.classification) {
-                        successfullyClassifiedSignCount++
                         println("Sign ${sign.path} was classified correctly")
                     } else {
-                        println("Sign ${sign.path} was classified wrongly as $classification, while the actual type is ${sign.classification}")
+                        println("Sign ${sign.path} was classified wrongly as $classification, while the actual type " +
+                                "is ${sign.classification}")
                     }
-                    totalSignCount++
-                    println("Successfully classified $successfullyClassifiedSignCount out of $totalSignCount signs (${(successfullyClassifiedSignCount.toDouble() / totalSignCount.toDouble()) * 100}%)c")
                 } catch (e: SignAnalysisException) {
                     println(e.message)
                     println("An error occurred while analyzing sign " + sign.path)
                 }
                 println("–––––––––––––––Finished classification of sign ${sign.path}––––––––––––––––––")
             }
+            val evaluation = classificationTest()
+            evaluation.evaluateSignClassification(signs.toList(), signs.toList().map { it.classification })
         }
         else -> {
             println("Invalid input")
