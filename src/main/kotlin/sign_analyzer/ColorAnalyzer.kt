@@ -121,10 +121,10 @@ private fun getApproximatedColor(color: Color) : ApproximatedColor {
  * @return The normalized image.
  */
 private fun normalizeBrightness(originalSign: Mat, clipHistPercent: Double = 1.0): Mat {
-
     if (originalSign.empty()){
         throw IllegalArgumentException("The input image is empty")
     }
+
     val gray = Mat()
     // Convert image to grayscale
     Imgproc.cvtColor(originalSign, gray, Imgproc.COLOR_BGRA2GRAY)

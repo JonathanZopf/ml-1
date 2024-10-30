@@ -1,7 +1,8 @@
 package org.hszg
 
 import nu.pattern.OpenCV
-import org.hszg.classification.classificationTest
+import org.hszg.SignLoading.getAllSignsForTrainingAndClassification
+import org.hszg.classification.evaluateSignClassification
 import org.hszg.learner_implementations.DecisionTree
 import org.hszg.learner_implementations.KNearestNeighbor
 import org.hszg.sign_analyzer.SignAnalysisException
@@ -12,23 +13,23 @@ import org.hszg.training.writeTrainingData
 
 fun main() {
     OpenCV.loadLocally()
+    println("Getting all images ...")
+    val signs = getAllSignsForTrainingAndClassification(50, 50)
     println("Do you want to train the model(t) or classify the model (c)?")
     val input = readlnOrNull()
     when (input) {
         "t" -> {
-            val signs = loadSignsForTraining()
-            signs.forEach { sign ->
+            signs.getSignsForTraining().forEach {
                 try {
-                    val signProperties = analyzeSign(sign)
-                    writeTrainingData(TrainingData(sign.classification, signProperties.toFeatureVector()))
+                    val signProperties = analyzeSign(it)
+                    writeTrainingData(TrainingData(it.getClassification(), signProperties.toFeatureVector()))
                 } catch (e: SignAnalysisException) {
                     println(e.message)
-                    println("An error occurred while analyzing sign "+ sign.path)
+                    println("An error occurred while analyzing sign "+ it.getAbsolutePath())
                 }
             }
         }
         "c" -> {
-            val signs = loadSignsForClassificationTesting(0.001)
             val trainingData = readTrainingData().toSet()
             println("Do you want to use the kNearestNeighbor-Algorithm(k) or the Decision-Tree-Algorithm(d)?")
             val inputClassification = readlnOrNull()
@@ -48,26 +49,26 @@ fun main() {
                 }
             }
             learnerImplementation.learn(trainingData)
-            signs.forEach { sign ->
-                println("–––––––––––––––Starting classification of sign ${sign.path}––––––––––––––––––")
+            val classificationSigns = signs.getSignsForClassification()
+            classificationSigns.forEach { sign ->
+                println("–––––––––––––––Starting classification of sign ${sign.getAbsolutePath()}––––––––––––––––––")
                 try {
                     val signProperties = analyzeSign(sign)
                     val classification = learnerImplementation.classify(signProperties.toFeatureVector())
-                    println("Sign ${sign.path} is classified as $classification")
-                    if (classification == sign.classification) {
-                        println("Sign ${sign.path} was classified correctly")
+                    println("Sign ${sign.getAbsolutePath()} is classified as $classification")
+                    if (classification == sign.getClassification()) {
+                        println("Sign ${sign.getAbsolutePath()} was classified correctly")
                     } else {
-                        println("Sign ${sign.path} was classified wrongly as $classification, while the actual type " +
-                                "is ${sign.classification}")
+                        println("Sign ${sign.getAbsolutePath()} was classified wrongly as $classification, while the actual type " +
+                                "is ${sign.getClassification()}")
                     }
                 } catch (e: SignAnalysisException) {
                     println(e.message)
-                    println("An error occurred while analyzing sign " + sign.path)
+                    println("An error occurred while analyzing sign " + sign.getAbsolutePath())
                 }
-                println("–––––––––––––––Finished classification of sign ${sign.path}––––––––––––––––––")
+                println("–––––––––––––––Finished classification of sign ${sign.getAbsolutePath()}––––––––––––––––––")
             }
-            val evaluation = classificationTest()
-            evaluation.evaluateSignClassification(signs.toList(), signs.toList().map { it.classification })
+            evaluateSignClassification(classificationSigns, classificationSigns.map { it.getClassification() })
         }
         else -> {
             println("Invalid input")

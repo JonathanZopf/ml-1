@@ -1,24 +1,22 @@
 package org.hszg.classification
 
-import org.hszg.LoadedSign
 import org.hszg.SignClassification
+import org.hszg.SignLoading.LoadableSign
 
-class classificationTest{
-
-    fun testSignClassification(sign: LoadedSign, classification: SignClassification): Boolean{
-        val expectedClassification = sign.classification
+    fun testSignClassification(sign: LoadableSign, classification: SignClassification): Boolean{
+        val expectedClassification = sign.getClassification()
         val actualClassification = classification
         if (expectedClassification == actualClassification){
-            println("Sign ${sign.path} was classified correctly")
+            println("Sign ${sign.getAbsolutePath()} was classified correctly")
             return true
         } else {
-            println("Sign ${sign.path} was classified wrongly as $classification, while the actual type is ${sign.classification}")
+            println("Sign ${sign.getAbsolutePath()} was classified wrongly as $classification, while the actual type is ${sign.getClassification()}")
             return false
         }
     }
 
 
-    fun evaluateSignClassification(signs: List<LoadedSign>, classifications: List<SignClassification>){
+    fun evaluateSignClassification(signs: List<LoadableSign>, classifications: List<SignClassification>){
         var correctlyClassifiedSigns = 0
         for (i in 0 until signs.size){
             if (testSignClassification(signs[i], classifications[i])){
@@ -32,4 +30,3 @@ class classificationTest{
     fun getConfidenceInterval(){
         //TODO:
     }
-}

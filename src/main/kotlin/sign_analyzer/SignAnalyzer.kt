@@ -2,7 +2,7 @@ package org.hszg.sign_analyzer
 
 import analyzeColors
 import analyzeColorsLeftRight
-import org.hszg.LoadedSign
+import org.hszg.SignLoading.LoadableSign
 import org.hszg.sign_analyzer.line_finder.findHorizontalLine
 import org.hszg.sign_analyzer.line_finder.findVerticalLine
 import org.hszg.sign_analyzer.shape_recognizer.recognizeShape
@@ -15,8 +15,8 @@ import java.io.File
 import kotlin.math.roundToInt
 
 @Throws(SignAnalysisException::class)
-fun analyzeSign(loadedSign: LoadedSign, writeDebugImage : Boolean = false) : SignProperties {
-    val sign = loadedSign.image
+fun analyzeSign(loadableSign: LoadableSign, writeDebugImage : Boolean = false) : SignProperties {
+    val sign = loadableSign.loadImage()
     val croppedSign = cropSignWithTransparency(sign)
     val extremities = findExtremities(sign)
     val horizontalLine = findHorizontalLine(extremities)
