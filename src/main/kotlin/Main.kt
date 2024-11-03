@@ -3,6 +3,7 @@ package org.hszg
 import nu.pattern.OpenCV
 import org.hszg.SignLoading.getAllSignsForTrainingAndClassification
 import org.hszg.classification.evaluateSignClassification
+import org.hszg.classification.getConfidenceInterval
 import org.hszg.learner_implementations.DecisionTree
 import org.hszg.learner_implementations.KNearestNeighbor
 import org.hszg.sign_analyzer.SignAnalysisException
@@ -50,6 +51,7 @@ fun main() {
             }
             learnerImplementation.learn(trainingData)
             val classificationSigns = signs.getSignsForClassification()
+            val accuracies = mutableListOf<Double>()
             classificationSigns.forEach { sign ->
                 println("–––––––––––––––Starting classification of sign ${sign.getAbsolutePath()}––––––––––––––––––")
                 try {
@@ -58,9 +60,11 @@ fun main() {
                     println("Sign ${sign.getAbsolutePath()} is classified as $classification")
                     if (classification == sign.getClassification()) {
                         println("Sign ${sign.getAbsolutePath()} was classified correctly")
+                        accuracies.add(1.0)
                     } else {
                         println("Sign ${sign.getAbsolutePath()} was classified wrongly as $classification, while the actual type " +
                                 "is ${sign.getClassification()}")
+                        accuracies.add(0.0)
                     }
                 } catch (e: SignAnalysisException) {
                     println(e.message)
@@ -69,6 +73,8 @@ fun main() {
                 println("–––––––––––––––Finished classification of sign ${sign.getAbsolutePath()}––––––––––––––––––")
             }
             evaluateSignClassification(classificationSigns, classificationSigns.map { it.getClassification() })
+            val confidenceInterval = getConfidenceInterval(accuracies)
+            println("Condifidence interval: $confidenceInterval")
         }
         else -> {
             println("Invalid input")

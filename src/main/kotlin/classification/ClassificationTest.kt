@@ -27,6 +27,17 @@ import org.hszg.SignLoading.LoadableSign
             (correctlyClassifiedSigns.toDouble() / signs.size.toDouble()) * 100}%)c")
     }
 
-    fun getConfidenceInterval(){
-        //TODO:
+    fun getConfidenceInterval(data: List<Double>): List<Double>{
+        val mean = data.average()
+        val standardDeviation = Math.sqrt(data.map { it ->
+            Math.pow((it - mean), 2.0)
+        }.sum() / data.size)
+        val standardError = standardDeviation / Math.sqrt(data.size.toDouble())
+        val z = 1.96
+
+        val confindenceInterval = z * standardError
+        val lowerBound = mean - confindenceInterval
+        val upperBound = mean + confindenceInterval
+
+        return listOf(confindenceInterval, lowerBound, upperBound)
     }
