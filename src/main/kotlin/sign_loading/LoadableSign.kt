@@ -33,4 +33,18 @@ class LoadableSign(private val absolutePath: String, private val classification:
     fun getAbsolutePath(): String {
         return absolutePath
     }
+
+    /**
+     * Get the minimal path of the image file which looks better in logs.
+     * Is the third last part (delimiter /) of the absolute path.
+     * @return The minimal path of the image file.
+     */
+    fun getMinimalPath(): String {
+        val parts = absolutePath.split("/")
+        if (parts.size < 5) {
+            println("!!!Path $absolutePath is too short to get a minimal path!!!")
+            return absolutePath
+        }
+        return absolutePath.substringAfter(parts[parts.size - 5])
+    }
 }

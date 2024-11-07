@@ -2,10 +2,10 @@ package org.hszg
 
 import nu.pattern.OpenCV
 import org.hszg.SignLoading.getAllSignsForTrainingAndClassification
-import org.hszg.classification.evaluateSignClassification
-import org.hszg.classification.getConfidenceInterval
+import org.hszg.classification.summarizeClassificationResults
 import org.hszg.learner_implementations.DecisionTree
 import org.hszg.learner_implementations.KNearestNeighbor
+import org.hszg.learner_implementations.NeuronalNetwork
 import org.hszg.sign_analyzer.SignAnalysisException
 import org.hszg.sign_analyzer.analyzeSign
 import org.hszg.training.TrainingData
@@ -24,7 +24,7 @@ fun main() {
                 try {
                     val signProperties = analyzeSign(it)
                     writeTrainingData(TrainingData(it.getClassification(), signProperties.toFeatureVector()))
-                } catch (e: SignAnalysisException) {
+                } catch (e: Exception) {
                     println(e.message)
                     println("An error occurred while analyzing sign "+ it.getAbsolutePath())
                 }
@@ -32,7 +32,7 @@ fun main() {
         }
         "c" -> {
             val trainingData = readTrainingData().toSet()
-            println("Do you want to use the kNearestNeighbor-Algorithm(k) or the Decision-Tree-Algorithm(d)?")
+            println("Do you want to use the kNearestNeighbor-Algorithm(k), the Decision-Tree-Algorithm(d) or the Neuronal-Network (n)?")
             val inputClassification = readlnOrNull()
             val learnerImplementation: Learner =
             when (inputClassification) {
@@ -44,37 +44,46 @@ fun main() {
                     val learner = DecisionTree()
                     learner
                 }
+                "n" -> {
+                    val learner = NeuronalNetwork()
+                    learner
+                }
                 else -> {
                     println("Invalid input")
                     return
                 }
             }
+            
+            println("Starting training of the model")
             learnerImplementation.learn(trainingData)
+            println("Finished training of the model, proceeding to classification")
+            
             val classificationSigns = signs.getSignsForClassification()
-            val accuracies = mutableListOf<Double>()
+            val correctIdentifications = mutableListOf<Boolean>()
             classificationSigns.forEach { sign ->
-                println("–––––––––––––––Starting classification of sign ${sign.getAbsolutePath()}––––––––––––––––––")
+                println()
+                println("–––––––––––––––Starting classification of sign ${sign.getMinimalPath()}––––––––––––––––––")
                 try {
                     val signProperties = analyzeSign(sign)
                     val classification = learnerImplementation.classify(signProperties.toFeatureVector())
-                    println("Sign ${sign.getAbsolutePath()} is classified as $classification")
+                    println("Sign ${sign.getMinimalPath()} is classified as $classification")
                     if (classification == sign.getClassification()) {
-                        println("Sign ${sign.getAbsolutePath()} was classified correctly")
-                        accuracies.add(1.0)
+                        println("Sign ${sign.getMinimalPath()} was classified correctly")
+                        correctIdentifications.add(true)
                     } else {
-                        println("Sign ${sign.getAbsolutePath()} was classified wrongly as $classification, while the actual type " +
+                        println("Sign ${sign.getMinimalPath()} was classified wrongly as $classification, while the actual type " +
                                 "is ${sign.getClassification()}")
-                        accuracies.add(0.0)
+                        correctIdentifications.add(false)
                     }
                 } catch (e: SignAnalysisException) {
                     println(e.message)
-                    println("An error occurred while analyzing sign " + sign.getAbsolutePath())
+                    println("!!!An error occurred while analyzing sign " + sign.getMinimalPath() + "!!!")
+                    println("!!!The analysis of the sign will be skipped, but counted as falsely identified!!!")
+                    correctIdentifications.add(false)
                 }
-                println("–––––––––––––––Finished classification of sign ${sign.getAbsolutePath()}––––––––––––––––––")
+                println("–––––––––––––––Finished classification of sign ${sign.getMinimalPath()}––––––––––––––––––")
             }
-            evaluateSignClassification(classificationSigns, classificationSigns.map { it.getClassification() })
-            val confidenceInterval = getConfidenceInterval(accuracies)
-            println("Condifidence interval: $confidenceInterval")
+            summarizeClassificationResults(correctIdentifications)
         }
         else -> {
             println("Invalid input")

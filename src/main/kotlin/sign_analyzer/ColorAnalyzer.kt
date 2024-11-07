@@ -20,6 +20,9 @@ import kotlin.math.sqrt
  * @return A list of SignColor objects representing the colors on the sign.
  */
 fun analyzeColors(croppedSign: Mat) : List<SignColor>{
+    if (croppedSign.empty()){
+        throw IllegalArgumentException("The input image is empty")
+    }
     normalizeBrightness(croppedSign)
    return getAllColorsWithShare(croppedSign)
 }
@@ -42,6 +45,11 @@ fun analyzeColorsLeftRight(croppedSign: Mat, verticalLine: Pair<Point, Point>) :
     croppedSign.submat(leftSideRect).copyTo(leftSide)
     croppedSign.submat(rightSideRect).copyTo(rightSide)
 
+    // If one half of the sign is empty, return a list of SignColor objects with a share of 0 for each color
+    if (leftSide.empty() || rightSide.empty()){
+        return Pair(getEmptyHalfReturnValue(), getEmptyHalfReturnValue())
+    }
+
     val leftColors = analyzeColors(leftSide)
     val rightColors = analyzeColors(rightSide)
     return Pair(leftColors, rightColors)
@@ -53,7 +61,7 @@ fun analyzeColorsLeftRight(croppedSign: Mat, verticalLine: Pair<Point, Point>) :
  * @param partToAnalyze The part of the sign to analyze. Can be the whole sign or a part of it.
  * @return A list of pairs, each containing an approximated color and its share on the sign.
  */
-fun getAllColorsWithShare(partToAnalyze: Mat) : List<SignColor> {
+private fun getAllColorsWithShare(partToAnalyze: Mat) : List<SignColor> {
     // Count the occurrences of each color and save the count of pixels in a hashmap
     val counted = HashMap<ApproximatedColor, Int>()
     for (approximatedColor in ApproximatedColor.entries) {
@@ -121,10 +129,6 @@ private fun getApproximatedColor(color: Color) : ApproximatedColor {
  * @return The normalized image.
  */
 private fun normalizeBrightness(originalSign: Mat, clipHistPercent: Double = 1.0): Mat {
-    if (originalSign.empty()){
-        throw IllegalArgumentException("The input image is empty")
-    }
-
     val gray = Mat()
     // Convert image to grayscale
     Imgproc.cvtColor(originalSign, gray, Imgproc.COLOR_BGRA2GRAY)
@@ -168,4 +172,15 @@ private fun normalizeBrightness(originalSign: Mat, clipHistPercent: Double = 1.0
     originalSign.convertTo(autoResult, CvType.CV_8UC1, alpha, beta)
 
     return autoResult
+}
+
+/**
+ * Get the return value if one half of the sign is empty.
+ * If one half of the sign is empty, this usually means that the cropping failed or was not done correctly.
+ * In this case, return a list of SignColor objects with a share of 0 for each color.
+ * Also use this function for the not empty half of the sign.
+ * @return A list of SignColor objects with a share of 0 for each color.
+ */
+private fun getEmptyHalfReturnValue() : List<SignColor> {
+    return ApproximatedColor.entries.map { SignColor(it, 0.0) };
 }
