@@ -2,10 +2,10 @@ package org.hszg.neuronal_network
 
 class Perceptron {
     private var weights = ArrayList<Double>()
-    private val learningRate = 0.01
+    private val learningRate = 0.05
 
     init {
-        val weightsSize = 16 +1;
+        val weightsSize = 16 + 1;
         for (i in 0 until weightsSize) {
             weights.add(Math.random())
         }

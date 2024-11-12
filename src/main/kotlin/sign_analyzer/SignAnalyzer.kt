@@ -29,7 +29,7 @@ fun analyzeSign(loadableSign: LoadableSign, writeDebugImage : Boolean = false) :
     val colorsLeftRight = analyzeColorsLeftRight(croppedSign, verticalLine)
 
     if (writeDebugImage) {
-        writeDebugResultImage(sign, extremities, colorsTotalSign, colorsLeftRight, horizontalLine, verticalLine)
+       writeDebugResultImage(croppedSign, extremities, colorsTotalSign, colorsLeftRight, horizontalLine, verticalLine)
     }
     return SignProperties(
         colors = colorsTotalSign,

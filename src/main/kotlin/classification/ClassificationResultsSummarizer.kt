@@ -3,36 +3,36 @@ package org.hszg.classification
 import kotlin.math.pow
 import kotlin.math.sqrt
 
+/**
+ * Summarize the classification results and print them to the console.
+ * @param data The data to summarize. Items are true if the classification was correct, false otherwise.
+ */
 fun summarizeClassificationResults(data: List<Boolean>) {
-    val truePositives = data.count { it }
-    val falsePositives = data.size - truePositives
-    val trueNegatives = 0
-    val falseNegatives = 0
-
-    val accuracy = (truePositives + trueNegatives) / data.size.toDouble()
-    val precision = truePositives / (truePositives + falsePositives).toDouble()
-    val recall = truePositives / (truePositives + falseNegatives).toDouble()
-
+    val total = data.size
+    val success = data.count { it }
+    val accuracy = success * 100 / total.toDouble()
     println("")
     println("")
     println("–––––––––––––––Classification Results–––––––––––––––")
-    println("Accuracy: $accuracy")
-    println("Precision: $precision")
-    println("Recall: $recall")
+    println("Accuracy: $success out of $total cases ($accuracy%)")
     println("Confidence interval: ${calculateConfidenceInterval(data.map { if (it) 1.0 else 0.0 })}")
     println("––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––")
 }
-    private fun calculateConfidenceInterval(data: List<Double>): List<Double>{
-        val mean = data.average()
-        val standardDeviation = sqrt(data.sumOf {
-            (it - mean).pow(2.0)
-        } / data.size)
-        val standardError = standardDeviation / sqrt(data.size.toDouble())
-        val z = 1.96
 
-        val confidenceInterval = z * standardError
-        val lowerBound = mean - confidenceInterval
-        val upperBound = mean + confidenceInterval
+/**
+ * Calculate the confidence interval for the given data.
+ * @param data The data to calculate the confidence interval for.
+ * @return A list containing the confidence interval, the lower bound and the upper bound.
+ */
+private fun calculateConfidenceInterval(data: List<Double>): List<Double> {
+    val mean = data.average()
+    val n = data.size
+    val standardError = sqrt(mean * (1 - mean) / n)
+    val z = 1.96  // For 95% confidence level
 
-        return listOf(confidenceInterval, lowerBound, upperBound)
-    }
+    val confidenceInterval = z * standardError
+    val lowerBound = (mean - confidenceInterval).coerceAtLeast(0.0)
+    val upperBound = (mean + confidenceInterval).coerceAtMost(1.0)
+
+    return listOf(confidenceInterval, lowerBound, upperBound)
+}

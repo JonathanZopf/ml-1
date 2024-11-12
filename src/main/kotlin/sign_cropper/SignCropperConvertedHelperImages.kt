@@ -20,7 +20,7 @@ class SignCropperConvertedHelperImages(original: Mat) {
         val gray = Mat()
         Imgproc.cvtColor(original, gray, Imgproc.COLOR_RGB2GRAY)
         // Apply a binary threshold to get a binary image (foreground vs background)
-        Imgproc.threshold(gray, binary, 240.0, 255.0, Imgproc.THRESH_BINARY_INV)
+        Imgproc.threshold(gray, binary, 120.0, 255.0, Imgproc.THRESH_BINARY_INV)
     }
 
     fun getRgba(): Mat = rgba

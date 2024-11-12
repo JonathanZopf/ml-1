@@ -11,6 +11,7 @@ import org.hszg.training.TrainingData
 class NeuronalNetwork : Learner {
     private val perceptron: List<Perceptron> = listOf(Perceptron(), Perceptron(), Perceptron())
 
+
     override fun classify(featureVector: List<Double>): SignClassification {
         val res = perceptron.map { it.classify(featureVector) }
         if (res.size != 3) {
@@ -21,7 +22,7 @@ class NeuronalNetwork : Learner {
     }
 
     override fun learn(trainingData: Set<TrainingData>) {
-        repeat(1000) {
+        repeat(10000) {
             for (data in trainingData) {
                 val modelAsList = classificationToModel(data.classification).toList()
                 for (i in perceptron.indices) {

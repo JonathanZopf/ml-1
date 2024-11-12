@@ -15,14 +15,14 @@ import org.hszg.training.writeTrainingData
 fun main() {
     OpenCV.loadLocally()
     println("Getting all images ...")
-    val signs = getAllSignsForTrainingAndClassification(50, 50)
+    val signs = getAllSignsForTrainingAndClassification(1000, 50)
     println("Do you want to train the model(t) or classify the model (c)?")
     val input = readlnOrNull()
     when (input) {
         "t" -> {
             signs.getSignsForTraining().forEach {
                 try {
-                    val signProperties = analyzeSign(it)
+                    val signProperties = analyzeSign(it, true)
                     writeTrainingData(TrainingData(it.getClassification(), signProperties.toFeatureVector()))
                 } catch (e: Exception) {
                     println(e.message)
@@ -68,11 +68,10 @@ fun main() {
                     val classification = learnerImplementation.classify(signProperties.toFeatureVector())
                     println("Sign ${sign.getMinimalPath()} is classified as $classification")
                     if (classification == sign.getClassification()) {
-                        println("Sign ${sign.getMinimalPath()} was classified correctly")
+                        println("✅Sign was classified correctly")
                         correctIdentifications.add(true)
                     } else {
-                        println("Sign ${sign.getMinimalPath()} was classified wrongly as $classification, while the actual type " +
-                                "is ${sign.getClassification()}")
+                        println("❌Sign was classified wrongly (actual type: ${sign.getClassification()})")
                         correctIdentifications.add(false)
                     }
                 } catch (e: SignAnalysisException) {

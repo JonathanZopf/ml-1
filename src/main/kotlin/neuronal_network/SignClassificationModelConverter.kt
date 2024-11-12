@@ -10,11 +10,19 @@ class Model(val bit1: Boolean, val bit2: Boolean, val bit3: Boolean) {
         return "Model($bit1, $bit2, $bit3)"
     }
 
+    // equals and hashCode overrides are needed for the list operations
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || other !is Model) return false
 
         return bit1 == other.bit1 && bit2 == other.bit2 && bit3 == other.bit3
+    }
+
+    override fun hashCode(): Int {
+        var result = bit1.hashCode()
+        result = 31 * result + bit2.hashCode()
+        result = 31 * result + bit3.hashCode()
+        return result
     }
 }
 
@@ -25,6 +33,7 @@ private val classificationModelMap = mapOf(
     SignClassification.FAHRTRICHTUNG_LINKS to Model(false, true, true),
     SignClassification.FAHRTRICHTUNG_RECHTS to Model(true, false, false),
     SignClassification.VORFAHRTSSTRASSE to Model(true, false, true),
+    SignClassification.UNKNOWN to Model(true, true, false),
     SignClassification.UNKNOWN to Model(true, true, true)
 )
 
