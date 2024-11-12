@@ -24,9 +24,8 @@ fun main() {
                 try {
                     val signProperties = analyzeSign(it, true)
                     writeTrainingData(TrainingData(it.getClassification(), signProperties.toFeatureVector()))
-                } catch (e: Exception) {
-                    println(e.message)
-                    println("An error occurred while analyzing sign "+ it.getAbsolutePath())
+                } catch (e: SignAnalysisException) {
+                    println(SignAnalysisException("An error occurred while analyzing sign "+ it.getMinimalPath()))
                 }
             }
         }

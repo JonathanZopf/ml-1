@@ -2,11 +2,11 @@ package org.hszg.sign_analyzer
 
 import analyzeColors
 import analyzeColorsLeftRight
+import cropSign
 import org.hszg.SignLoading.LoadableSign
 import org.hszg.sign_analyzer.line_finder.findHorizontalLine
 import org.hszg.sign_analyzer.line_finder.findVerticalLine
 import org.hszg.sign_analyzer.shape_recognizer.recognizeShape
-import org.hszg.sign_cropper.cropSignWithTransparency
 import org.hszg.sign_properties.SignColor
 import org.hszg.sign_properties.SignProperties
 import org.opencv.core.*
@@ -19,26 +19,37 @@ import kotlin.math.roundToInt
 @Throws(SignAnalysisException::class)
 fun analyzeSign(loadableSign: LoadableSign, writeDebugImage : Boolean = false) : SignProperties {
     try {
-    val sign = loadableSign.loadImage()
-    val croppedSign = cropSignWithTransparency(sign)
-    val extremities = findExtremities(sign)
-    val horizontalLine = findHorizontalLine(extremities)
-    val verticalLine = findVerticalLine( extremities)
+        val sign = loadableSign.loadImage()
+        val croppedSign = cropSign(sign)
+        if (writeDebugImage) {
+            writeCroppedSign(croppedSign)
+        }
 
-    val colorsTotalSign = analyzeColors(croppedSign)
-    val colorsLeftRight = analyzeColorsLeftRight(croppedSign, verticalLine)
+        val extremities = findExtremities(sign)
+        val horizontalLine = findHorizontalLine(extremities)
+        val verticalLine = findVerticalLine(extremities)
 
-    if (writeDebugImage) {
-       writeDebugResultImage(croppedSign, extremities, colorsTotalSign, colorsLeftRight, horizontalLine, verticalLine)
-    }
-    return SignProperties(
-        colors = colorsTotalSign,
-        shape = recognizeShape(extremities),
-        colorsLeft = colorsLeftRight.first,
-        colorsRight = colorsLeftRight.second
-    )
+        val colorsTotalSign = analyzeColors(croppedSign)
+        val colorsLeftRight = analyzeColorsLeftRight(croppedSign, verticalLine)
+
+        if (writeDebugImage) {
+            writeDebugResultImage(
+                croppedSign,
+                extremities,
+                colorsTotalSign,
+                colorsLeftRight,
+                horizontalLine,
+                verticalLine
+            )
+        }
+        return SignProperties(
+            colors = colorsTotalSign,
+            shape = recognizeShape(extremities),
+            colorsLeft = colorsLeftRight.first,
+            colorsRight = colorsLeftRight.second
+        )
     } catch (e: Exception) {
-        throw SignAnalysisException("Error analyzing sign ${loadableSign.getMinimalPath()}", e)
+        throw SignAnalysisException("Error during sign analysis", e)
     }
 }
 
@@ -96,5 +107,19 @@ private fun writeDebugResultImage(sign: Mat, extremities: MatOfPoint, colorsTota
     Imgproc.drawContours(sign, listOf(MatOfPoint(horizontalLine.first, horizontalLine.second), MatOfPoint(verticalLine.first, verticalLine.second)), -1, Scalar(0.0, 255.0, 0.0), 10)
 
     Imgcodecs.imwrite(debugProcessedFileLocation, sign)
+}
+
+private fun writeCroppedSign(croppedSign: Mat) {
+    val classloader = Thread.currentThread().contextClassLoader
+    val fileLocationFile = classloader.getResourceAsStream("debug_output_location.txt")
+        ?: throw IllegalArgumentException("There is no debug_output_location in the resources folder")
+    val debugProcessedFileLocation = fileLocationFile.bufferedReader().use { it.readText() } + System.currentTimeMillis() + "_cropped" + ".jpg"
+    // Check if the directory exists
+    val directory = File(debugProcessedFileLocation.substringBeforeLast("/"))
+    if (!directory.exists()) {
+        throw IllegalArgumentException("Invalid directory: $debugProcessedFileLocation")
+    }
+
+    Imgcodecs.imwrite(debugProcessedFileLocation, croppedSign)
 }
 
