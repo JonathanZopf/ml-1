@@ -5,6 +5,7 @@ import java.io.File
 
 /**
  * Gets all signs that are available and splits them into training and classification signs.
+ * For the same dataset, the same selection will be returned for every call.
  * @param numberTrainingSigns The number of signs that should be used for training.
  * @param numberClassificationSigns The number of signs that should be used for classification.
  */
@@ -14,7 +15,8 @@ fun getAllSignsForTrainingAndClassification(numberTrainingSigns: Int, numberClas
         throw IllegalArgumentException("There are not enough signs to split them into training and classificatiion signs.")
     }
 
-    val shuffledSigns = allSigns.shuffled()
+    //
+    val shuffledSigns = allSigns.sortedBy { it.hashCode() }
     return LoadableSignCollection(shuffledSigns.take(numberTrainingSigns), shuffledSigns.takeLast(numberClassificationSigns))
 }
 
