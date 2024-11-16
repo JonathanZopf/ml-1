@@ -15,7 +15,7 @@ import org.hszg.training.writeTrainingData
 fun main() {
     OpenCV.loadLocally()
     println("Getting all images ...")
-    val signs = getAllSignsForTrainingAndClassification(300, 100)
+    val signs = getAllSignsForTrainingAndClassification(1000, 500)
     println("Do you want to train the model(t) or classify the model (c)?")
     val input = readlnOrNull()
     when (input) {
