@@ -4,7 +4,6 @@ import analyzeColors
 import analyzeColorsLeftRight
 import cropSign
 import org.hszg.SignLoading.LoadableSign
-import org.hszg.sign_analyzer.line_finder.findHorizontalLine
 import org.hszg.sign_analyzer.line_finder.findVerticalLine
 import org.hszg.sign_analyzer.shape_recognizer.recognizeShape
 import org.hszg.sign_properties.SignColor
@@ -13,7 +12,10 @@ import org.opencv.core.*
 import org.opencv.imgcodecs.Imgcodecs
 import org.opencv.imgproc.Imgproc
 import java.io.File
+import kotlin.math.ceil
+import kotlin.math.floor
 import kotlin.math.roundToInt
+import kotlin.math.sqrt
 
 
 @Throws(SignAnalysisException::class)
@@ -26,7 +28,6 @@ fun analyzeSign(loadableSign: LoadableSign, writeDebugImage : Boolean = false) :
         }
 
         val extremities = findExtremities(sign)
-        val horizontalLine = findHorizontalLine(extremities)
         val verticalLine = findVerticalLine(extremities)
 
         val colorsTotalSign = analyzeColors(croppedSign)
@@ -38,7 +39,6 @@ fun analyzeSign(loadableSign: LoadableSign, writeDebugImage : Boolean = false) :
                 extremities,
                 colorsTotalSign,
                 colorsLeftRight,
-                horizontalLine,
                 verticalLine
             )
         }
@@ -60,10 +60,9 @@ fun analyzeSign(loadableSign: LoadableSign, writeDebugImage : Boolean = false) :
  * @param extremities The extreme points of the sign. Will be marked with a red circle.
  * @param colorsTotalSign The colors of the sign. Will be written to the image as text.
  * @param colorsLeftRight The colors of the left and right side of the sign. Will be written to the image as text.
- * @param horizontalLine The horizontal line of the sign. Will be drawn to the image as a green line.
  * @param verticalLine The vertical line of the sign. Will be drawn to the image as a green line.
  */
-private fun writeDebugResultImage(sign: Mat, extremities: MatOfPoint, colorsTotalSign: List<SignColor>, colorsLeftRight: Pair<List<SignColor>, List<SignColor>>, horizontalLine: Pair<Point, Point>, verticalLine: Pair<Point, Point>) {
+private fun writeDebugResultImage(sign: Mat, extremities: MatOfPoint, colorsTotalSign: List<SignColor>, colorsLeftRight: Pair<List<SignColor>, List<SignColor>>,  verticalLine: Pair<Point, Point>) {
     val classloader = Thread.currentThread().contextClassLoader
     val fileLocationFile = classloader.getResourceAsStream("debug_output_location.txt")
         ?: throw IllegalArgumentException("There is no debug_output_location in the resources folder")
@@ -74,9 +73,11 @@ private fun writeDebugResultImage(sign: Mat, extremities: MatOfPoint, colorsTota
         throw IllegalArgumentException("Invalid directory: $debugProcessedFileLocation")
     }
 
+    val sizeOfSign = floor(sqrt(sign.width() * sign.height().toDouble())).toInt()
+
     // Write extreme points to the image
     for (point in extremities.toArray()) {
-        Imgproc.circle(sign, point, 50, Scalar(0.0, 0.0, 255.0), -1)
+        Imgproc.circle(sign, point, sizeOfSign / 40, Scalar(0.0, 0.0, 255.0), -1)
     }
 
     // Write total colors to the image
@@ -104,7 +105,7 @@ private fun writeDebugResultImage(sign: Mat, extremities: MatOfPoint, colorsTota
 
     // Write the recognized shape and the horizontal and vertical line to the image
     Imgproc.putText(sign, recognizeShape(extremities).name, Point(100.0, 2400.0), Imgproc.FONT_HERSHEY_SIMPLEX, 1.0, Scalar(255.0, 0.0, 0.0), 2)
-    Imgproc.drawContours(sign, listOf(MatOfPoint(horizontalLine.first, horizontalLine.second), MatOfPoint(verticalLine.first, verticalLine.second)), -1, Scalar(0.0, 255.0, 0.0), 10)
+    Imgproc.drawContours(sign, listOf(MatOfPoint(verticalLine.first, verticalLine.second)), -1, Scalar(0.0, 255.0, 0.0), sizeOfSign / 100)
 
     Imgcodecs.imwrite(debugProcessedFileLocation, sign)
 }
