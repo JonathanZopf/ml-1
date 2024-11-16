@@ -4,11 +4,12 @@ import org.opencv.imgproc.Imgproc
 
 /**
  * Crops the sign from the background and makes the background transparent.
+ * Furthermore, returns the contour of the sign which is the outermost shape of the sign.
  * Gets an uncropped sign in RGB format and returns the cropped sign in BGRA format.
  * @param originalSign The original sign image in RGB format.
  * @return The cropped sign with a transparent background.
  */
-fun cropSign(originalSign: Mat): Mat {
+fun cropSign(originalSign: Mat): Pair<Mat, MatOfPoint> {
     // Convert the image to binary based on the grayscale
     val gray = Mat()
     Imgproc.cvtColor(originalSign, gray, Imgproc.COLOR_BGR2GRAY)
@@ -45,7 +46,7 @@ fun cropSign(originalSign: Mat): Mat {
     val hullPoints = hullIndices.toArray().map { largestContour.toArray()[it] }
     convexHull.fromList(hullPoints)
 
-    return getSignWithOutsideTransparent(originalSign, convexHull)
+    return Pair(getSignWithOutsideTransparent(originalSign, convexHull), convexHull)
 }
 
 /**

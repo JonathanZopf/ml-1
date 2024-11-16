@@ -1,10 +1,11 @@
 package org.hszg.sign_analyzer
 
 import analyzeColors
-import analyzeColorsLeftRight
 import cropSign
 import org.hszg.SignLoading.LoadableSign
-import org.hszg.sign_analyzer.line_finder.findVerticalLine
+import org.hszg.sign_analyzer.color_analyzer.WhiteCenterAnalyzingResult
+import org.hszg.sign_analyzer.extremities_finder.findCorners
+import org.hszg.sign_analyzer.extremities_finder.findOutermostCorners
 import org.hszg.sign_analyzer.shape_recognizer.recognizeShape
 import org.hszg.sign_properties.SignColor
 import org.hszg.sign_properties.SignProperties
@@ -12,7 +13,6 @@ import org.opencv.core.*
 import org.opencv.imgcodecs.Imgcodecs
 import org.opencv.imgproc.Imgproc
 import java.io.File
-import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
@@ -22,31 +22,40 @@ import kotlin.math.sqrt
 fun analyzeSign(loadableSign: LoadableSign, writeDebugImage : Boolean = false) : SignProperties {
     try {
         val sign = loadableSign.loadImage()
-        val croppedSign = cropSign(sign)
+        val croppedSignWithContour = cropSign(sign)
+        val croppedSign = croppedSignWithContour.first
+        val contour = croppedSignWithContour.second
+
         if (writeDebugImage) {
             writeCroppedSign(croppedSign)
         }
 
-        val extremities = findExtremities(sign)
-        val verticalLine = findVerticalLine(extremities)
+        // Corners are the extreme points of the sign. They give a rough idea of the shape of the sign. There are arbitrary in number.
+        val corners = findCorners(sign)
 
-        val colorsTotalSign = analyzeColors(croppedSign)
-        val colorsLeftRight = analyzeColorsLeftRight(croppedSign, verticalLine)
+        // Outermost corners are the corners of the sign that are the farthest away from each other. They are used to calculate the vertical and horizontal line of the sign. Are always 4 corners.
+        val outermostCorners = findOutermostCorners(contour)
+        val verticalLine = outermostCorners.getVerticalLine()
+        val horizontalLine = outermostCorners.getHorizontalLine()
+
+        val colors = analyzeColors(croppedSign)
+        val colorsTotalSign = colors.first
+        val whiteCenter = colors.second
 
         if (writeDebugImage) {
             writeDebugResultImage(
                 croppedSign,
-                extremities,
+                corners,
                 colorsTotalSign,
-                colorsLeftRight,
-                verticalLine
+                whiteCenter,
+                verticalLine,
+                horizontalLine
             )
         }
         return SignProperties(
             colors = colorsTotalSign,
-            shape = recognizeShape(extremities),
-            colorsLeft = colorsLeftRight.first,
-            colorsRight = colorsLeftRight.second
+            shape = recognizeShape(corners),
+            whiteCenter = whiteCenter,
         )
     } catch (e: Exception) {
         throw SignAnalysisException("Error during sign analysis", e)
@@ -59,10 +68,10 @@ fun analyzeSign(loadableSign: LoadableSign, writeDebugImage : Boolean = false) :
  * @param sign The sign image. Will be the base for the debug image.
  * @param extremities The extreme points of the sign. Will be marked with a red circle.
  * @param colorsTotalSign The colors of the sign. Will be written to the image as text.
- * @param colorsLeftRight The colors of the left and right side of the sign. Will be written to the image as text.
+ * @param whiteCenter The result of the white center analyzing. Will be written to the image as text.
  * @param verticalLine The vertical line of the sign. Will be drawn to the image as a green line.
  */
-private fun writeDebugResultImage(sign: Mat, extremities: MatOfPoint, colorsTotalSign: List<SignColor>, colorsLeftRight: Pair<List<SignColor>, List<SignColor>>,  verticalLine: Pair<Point, Point>) {
+private fun writeDebugResultImage(sign: Mat, extremities: MatOfPoint, colorsTotalSign: List<SignColor>, whiteCenter: WhiteCenterAnalyzingResult, verticalLine: Pair<Point, Point>, horizontalLine: Pair<Point, Point>) {
     val classloader = Thread.currentThread().contextClassLoader
     val fileLocationFile = classloader.getResourceAsStream("debug_output_location.txt")
         ?: throw IllegalArgumentException("There is no debug_output_location in the resources folder")
@@ -88,24 +97,12 @@ private fun writeDebugResultImage(sign: Mat, extremities: MatOfPoint, colorsTota
     }
     Imgproc.putText(sign, colorText, Point(100.0, 2000.0), Imgproc.FONT_HERSHEY_SIMPLEX, 1.0, Scalar(255.0, 0.0, 0.0), 2)
 
-    // Write left and right colors to the image
-    var leftColorText = "Left Colors: "
-    for (color in colorsLeftRight.first) {
-        val percentage: String = (color.getShareOnSign() * 100).roundToInt().toString() + "%"
-        leftColorText += color.getApproximatedColor().name + ": " + percentage + ", "
-    }
-    Imgproc.putText(sign, leftColorText, Point(100.0, 2100.0), Imgproc.FONT_HERSHEY_SIMPLEX, 1.0, Scalar(255.0, 0.0, 0.0), 2)
-
-    var rightColorText = "Right Colors: "
-    for (color in colorsLeftRight.second) {
-        val percentage: String = (color.getShareOnSign() * 100).roundToInt().toString() + "%"
-        rightColorText += color.getApproximatedColor().name + ": " + percentage + ", "
-    }
-    Imgproc.putText(sign, rightColorText, Point(100.0, 2200.0), Imgproc.FONT_HERSHEY_SIMPLEX, 1.0, Scalar(255.0, 0.0, 0.0), 2)
+    // Write position of the white center to the image
+    Imgproc.putText(sign, whiteCenter.toString(), Point(100.0, 2200.0), Imgproc.FONT_HERSHEY_SIMPLEX, 1.0, Scalar(255.0, 0.0, 0.0), 2)
 
     // Write the recognized shape and the horizontal and vertical line to the image
     Imgproc.putText(sign, recognizeShape(extremities).name, Point(100.0, 2400.0), Imgproc.FONT_HERSHEY_SIMPLEX, 1.0, Scalar(255.0, 0.0, 0.0), 2)
-    Imgproc.drawContours(sign, listOf(MatOfPoint(verticalLine.first, verticalLine.second)), -1, Scalar(0.0, 255.0, 0.0), sizeOfSign / 100)
+    Imgproc.drawContours(sign, listOf(MatOfPoint(verticalLine.first, verticalLine.second),  MatOfPoint(horizontalLine.first, horizontalLine.second)), -1, Scalar(0.0, 255.0, 0.0), sizeOfSign / 100)
 
     Imgcodecs.imwrite(debugProcessedFileLocation, sign)
 }

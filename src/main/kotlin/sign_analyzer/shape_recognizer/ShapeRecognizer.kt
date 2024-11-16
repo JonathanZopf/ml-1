@@ -4,13 +4,13 @@ import org.opencv.core.MatOfPoint
 import kotlin.math.abs
 
 /**
- * Recognizes the shape of a sign based on the number of extremities
- * @param extremities the extremities of the sign
+ * Recognizes the shape of a sign based on the number of corners
+ * @param corners the corners of the sign
  * @return the recognized shape
  */
-fun recognizeShape(extremities: MatOfPoint) : SignShape {
-    return when (extremities.toList().size) {
-        3 -> recognizeTriangleType(extremities)
+fun recognizeShape(corners: MatOfPoint) : SignShape {
+    return when (corners.toList().size) {
+        3 -> recognizeTriangleType(corners)
         4 -> SignShape.SQUARE
         8 -> SignShape.OCTAGON
         else -> SignShape.CIRCLE
@@ -18,12 +18,12 @@ fun recognizeShape(extremities: MatOfPoint) : SignShape {
 }
 
 /**
- * Recognizes the direction (normal or flipped) of a triangle based on the extremities
- * @param extremities the extremities of the sign
+ * Recognizes the direction (normal or flipped) of a triangle based the corners
+ * @param corners the corners of the sign
  * @return the recognized shape
  */
-private fun recognizeTriangleType(extremities: MatOfPoint) : SignShape{
-    val points = extremities.toList()
+private fun recognizeTriangleType(corners: MatOfPoint) : SignShape{
+    val points = corners.toList()
     val topPoints = points.sortedBy { -it.y }
     if (topPoints.size != 3) {
        throw IllegalArgumentException("Invalid number of points for triangle")
