@@ -6,7 +6,6 @@ import org.hszg.SignLoading.LoadableSign
 import org.hszg.sign_analyzer.color_analyzer.WhiteCenterAnalyzingResult
 import org.hszg.sign_analyzer.extremities_finder.findCorners
 import org.hszg.sign_analyzer.extremities_finder.findOutermostCorners
-import org.hszg.sign_analyzer.shape_recognizer.recognizeShape
 import org.hszg.sign_properties.SignColor
 import org.hszg.sign_properties.SignProperties
 import org.opencv.core.*
@@ -41,6 +40,7 @@ fun analyzeSign(loadableSign: LoadableSign, writeDebugImage : Boolean = false) :
         val colors = analyzeColors(croppedSign)
         val colorsTotalSign = colors.first
         val whiteCenter = colors.second
+        val cornersCountNormalizer = Math.clamp(corners.toList().size.toDouble() / 9, 0.0, 1.0)
 
         if (writeDebugImage) {
             writeDebugResultImage(
@@ -54,7 +54,7 @@ fun analyzeSign(loadableSign: LoadableSign, writeDebugImage : Boolean = false) :
         }
         return SignProperties(
             colors = colorsTotalSign,
-            shape = recognizeShape(corners),
+            cornersCountNormalized = cornersCountNormalizer,
             whiteCenter = whiteCenter,
         )
     } catch (e: Exception) {
@@ -71,7 +71,7 @@ fun analyzeSign(loadableSign: LoadableSign, writeDebugImage : Boolean = false) :
  * @param whiteCenter The result of the white center analyzing. Will be written to the image as text.
  * @param verticalLine The vertical line of the sign. Will be drawn to the image as a green line.
  */
-private fun writeDebugResultImage(sign: Mat, extremities: MatOfPoint, colorsTotalSign: List<SignColor>, whiteCenter: WhiteCenterAnalyzingResult, verticalLine: Pair<Point, Point>, horizontalLine: Pair<Point, Point>) {
+private fun writeDebugResultImage(sign: Mat, corners: MatOfPoint, colorsTotalSign: List<SignColor>, whiteCenter: WhiteCenterAnalyzingResult, verticalLine: Pair<Point, Point>, horizontalLine: Pair<Point, Point>) {
     val classloader = Thread.currentThread().contextClassLoader
     val fileLocationFile = classloader.getResourceAsStream("debug_output_location.txt")
         ?: throw IllegalArgumentException("There is no debug_output_location in the resources folder")
@@ -85,7 +85,7 @@ private fun writeDebugResultImage(sign: Mat, extremities: MatOfPoint, colorsTota
     val sizeOfSign = floor(sqrt(sign.width() * sign.height().toDouble())).toInt()
 
     // Write extreme points to the image
-    for (point in extremities.toArray()) {
+    for (point in corners.toArray()) {
         Imgproc.circle(sign, point, sizeOfSign / 40, Scalar(0.0, 0.0, 255.0), -1)
     }
 
@@ -101,7 +101,7 @@ private fun writeDebugResultImage(sign: Mat, extremities: MatOfPoint, colorsTota
     Imgproc.putText(sign, whiteCenter.toString(), Point(100.0, 2200.0), Imgproc.FONT_HERSHEY_SIMPLEX, 1.0, Scalar(255.0, 0.0, 0.0), 2)
 
     // Write the recognized shape and the horizontal and vertical line to the image
-    Imgproc.putText(sign, recognizeShape(extremities).name, Point(100.0, 2400.0), Imgproc.FONT_HERSHEY_SIMPLEX, 1.0, Scalar(255.0, 0.0, 0.0), 2)
+    Imgproc.putText(sign, "Corners count: " + corners.toList().size, Point(100.0, 2400.0), Imgproc.FONT_HERSHEY_SIMPLEX, 1.0, Scalar(255.0, 0.0, 0.0), 2)
     Imgproc.drawContours(sign, listOf(MatOfPoint(verticalLine.first, verticalLine.second),  MatOfPoint(horizontalLine.first, horizontalLine.second)), -1, Scalar(0.0, 255.0, 0.0), sizeOfSign / 100)
 
     Imgcodecs.imwrite(debugProcessedFileLocation, sign)
