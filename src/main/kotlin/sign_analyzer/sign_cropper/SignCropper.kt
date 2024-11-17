@@ -39,14 +39,7 @@ fun cropSign(originalSign: Mat): Pair<Mat, MatOfPoint> {
         throw SignAnalysisException("No contour found")
     }
 
-    // Get the convex hull of the largest contour. This is used to "complete" the contour, if there is a gap which is likely in low-resolution images.
-    val convexHull = MatOfPoint()
-    val hullIndices = MatOfInt()
-    Imgproc.convexHull(largestContour, hullIndices)
-    val hullPoints = hullIndices.toArray().map { largestContour.toArray()[it] }
-    convexHull.fromList(hullPoints)
-
-    return Pair(getSignWithOutsideTransparent(originalSign, convexHull), convexHull)
+    return Pair(getSignWithOutsideTransparent(originalSign, largestContour), largestContour)
 }
 
 /**

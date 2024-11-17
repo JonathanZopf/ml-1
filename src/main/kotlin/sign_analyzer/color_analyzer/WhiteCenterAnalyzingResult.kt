@@ -1,5 +1,7 @@
 package org.hszg.sign_analyzer.color_analyzer
 
+import kotlin.math.roundToInt
+
 class WhiteCenterAnalyzingResult (private val xRatio: Double, private val yRatio: Double) {
     init {
         require(xRatio in 0.0..1.0) { "xRatio must be between 0 and 1" }
@@ -23,6 +25,6 @@ class WhiteCenterAnalyzingResult (private val xRatio: Double, private val yRatio
         if (xRatio >= 0.5 && yRatio >= 0.5) {
             corner = "bottom right"
         }
-        return "x=$xRatio, y=$yRatio, corner=$corner"
+        return "x=${(xRatio * 100).roundToInt().toDouble() / 100}, y=${(yRatio * 100).roundToInt().toDouble() / 100}, corner=$corner"
     }
 }

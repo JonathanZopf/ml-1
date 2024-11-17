@@ -33,6 +33,63 @@ fun analyzeColors(croppedSign: Mat) : Pair<List<SignColor>, WhiteCenterAnalyzing
 }
 
 /**
+ * Normalizes the brightness of an image.
+ * Stolen from https://stackoverflow.com/questions/56905592/automatic-contrast-and-brightness-adjustment-of-a-color-photo-of-a-sheet-of-pape
+ * @param originalSign The original sign image.
+ * @param clipHistPercent The percentage of the histogram to clip.
+ * @return The normalized image.
+ */
+fun normalizeBrightness(originalSign: Mat, clipHistPercent: Double = 1.0): Mat {
+    if (originalSign.empty()){
+        throw IllegalArgumentException("The input image is empty")
+    }
+
+    val gray = Mat()
+    // Convert image to grayscale
+    Imgproc.cvtColor(originalSign, gray, Imgproc.COLOR_BGRA2GRAY)
+
+    // Calculate grayscale histogram
+    val histSize = MatOfInt(256)
+    val histRange = MatOfFloat(0f, 256f)
+    val hist = Mat()
+    Imgproc.calcHist(listOf(gray), MatOfInt(0), Mat(), hist, histSize, histRange)
+
+    val accumulator = mutableListOf<Double>()
+    accumulator.add(hist.get(0, 0)[0])
+
+    // Calculate cumulative distribution from the histogram
+    for (i in 1 until hist.rows()) {
+        accumulator.add(accumulator[i - 1] + hist.get(i, 0)[0])
+    }
+
+    // Locate points to clip
+    val maximum = accumulator.last()
+    var clipHistPercent = clipHistPercent * (maximum / 100.0) / 2.0
+
+    // Locate left cut
+    var minimumGray = 0
+    while (accumulator[minimumGray] < clipHistPercent) {
+        minimumGray++
+    }
+
+    // Locate right cut
+    var maximumGray = accumulator.size - 1
+    while (accumulator[maximumGray] >= maximum - clipHistPercent) {
+        maximumGray--
+    }
+
+    // Calculate alpha and beta
+    val alpha = 255.0 / (maximumGray - minimumGray)
+    val beta = -minimumGray * alpha
+
+    // Adjust image brightness and contrast
+    val autoResult = Mat()
+    originalSign.convertTo(autoResult, CvType.CV_8UC1, alpha, beta)
+
+    return autoResult
+}
+
+/**
  * Counts the non-transparent pixels in a cropped sign.
  * @param croppedSign The cropped sign to analyze.
  * @return The number of non-transparent pixels in the sign.

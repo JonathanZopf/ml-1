@@ -2,10 +2,10 @@ package org.hszg.sign_analyzer
 
 import analyzeColors
 import cropSign
+import normalizeBrightness
 import org.hszg.SignLoading.LoadableSign
 import org.hszg.sign_analyzer.color_analyzer.WhiteCenterAnalyzingResult
 import org.hszg.sign_analyzer.extremities_finder.findCorners
-import org.hszg.sign_analyzer.extremities_finder.findOutermostCorners
 import org.hszg.sign_properties.SignColor
 import org.hszg.sign_properties.SignProperties
 import org.opencv.core.*
@@ -23,20 +23,14 @@ fun analyzeSign(loadableSign: LoadableSign, writeDebugImage : Boolean = false) :
         val sign = loadableSign.loadImage()
         // Resize the image to a fixed size to make the analysis more consistent
         val scale = 3000.0 / maxOf(sign.width(), sign.height())
-        val resizedSign = Mat()
-        Imgproc.resize(sign, resizedSign, Size(sign.width() * scale, sign.height() * scale))
+        Imgproc.resize(sign, sign, Size(sign.width() * scale, sign.height() * scale))
 
         val croppedSignWithContour = cropSign(sign)
-        val croppedSign = croppedSignWithContour.first
-        val contour = croppedSignWithContour.second
+        val croppedSign = normalizeBrightness(croppedSignWithContour.first)
+        val croppingContour = croppedSignWithContour.second
 
         // Corners are the extreme points of the sign. They give a rough idea of the shape of the sign. There are arbitrary in number.
-        val corners = findCorners(sign)
-
-        // Outermost corners are the corners of the sign that are the farthest away from each other. They are used to calculate the vertical and horizontal line of the sign. Are always 4 corners.
-        val outermostCorners = findOutermostCorners(contour)
-        val verticalLine = outermostCorners.getVerticalLine()
-        val horizontalLine = outermostCorners.getHorizontalLine()
+        val corners = findCorners(croppingContour)
 
         val colors = analyzeColors(croppedSign)
         val colorsTotalSign = colors.first
@@ -45,12 +39,11 @@ fun analyzeSign(loadableSign: LoadableSign, writeDebugImage : Boolean = false) :
 
         if (writeDebugImage) {
             writeDebugResultImage(
-                croppedSign,
+                sign,
+                croppingContour,
                 corners,
                 colorsTotalSign,
-                whiteCenter,
-                verticalLine,
-                horizontalLine
+                whiteCenter
             )
         }
         return SignProperties(
@@ -69,15 +62,13 @@ fun analyzeSign(loadableSign: LoadableSign, writeDebugImage : Boolean = false) :
  * @param sign The sign image. Will be the base for the debug image..
  * @param colorsTotalSign The colors of the sign. Will be written to the image as text.
  * @param whiteCenter The result of the white center analyzing. Will be written to the image as text.
- * @param verticalLine The vertical line of the sign. Will be drawn to the image as a green line.
  */
 private fun writeDebugResultImage(
     sign: Mat,
-    corners: MatOfPoint,
+    croppingContour: MatOfPoint,
+    corners: List<Point>,
     colorsTotalSign: List<SignColor>,
     whiteCenter: WhiteCenterAnalyzingResult,
-    verticalLine: Pair<Point, Point>,
-    horizontalLine: Pair<Point, Point>
 ) {
     val classloader = Thread.currentThread().contextClassLoader
     val fileLocationFile = classloader.getResourceAsStream("debug_output_location.txt")
@@ -90,30 +81,42 @@ private fun writeDebugResultImage(
         throw IllegalArgumentException("Invalid directory: $debugProcessedFileLocation")
     }
 
-    val sizeOfSign = floor(sqrt(sign.width() * sign.height().toDouble())).toInt()
-
-    // Write extreme points to the image
-    for (point in corners.toArray()) {
-        Imgproc.circle(sign, point, sizeOfSign / 40, Scalar(0.0, 0.0, 255.0), -1)
+    // Write corners to image
+    for (point in corners) {
+        Imgproc.circle(sign, point, 100, Scalar(0.0, 0.0, 255.0), -1)
     }
 
-    // Write total colors to the image
+    // Write contour to image
+    val contour = croppingContour.toList()
+    for (i in 0 until contour.size) {
+        Imgproc.line(sign, contour[i], contour[(i + 1) % contour.size], Scalar(0.0, 255.0, 0.0), 10)
+    }
+
+    // Write debug text to the image
     var colorText = ""
     for (color in colorsTotalSign) {
         val percentage: String = (color.getShareOnSign() * 100).roundToInt().toString() + "%"
         colorText += color.getApproximatedColor().name + ": " + percentage + ", "
     }
-    Imgproc.putText(sign, colorText, Point(100.0, 2000.0), Imgproc.FONT_HERSHEY_SIMPLEX, 1.0, Scalar(255.0, 0.0, 0.0), 2)
-
-    // Write position of the white center to the image
-    Imgproc.putText(sign, whiteCenter.toString(), Point(100.0, 2200.0), Imgproc.FONT_HERSHEY_SIMPLEX, 1.0, Scalar(255.0, 0.0, 0.0), 2)
-
-    // Write the recognized shape and the horizontal and vertical line to the image
-    Imgproc.putText(sign, "Corners count: " + corners.toList().size, Point(100.0, 2400.0), Imgproc.FONT_HERSHEY_SIMPLEX, 1.0, Scalar(255.0, 0.0, 0.0), 2)
-    Imgproc.line(sign, verticalLine.first, verticalLine.second, Scalar(0.0, 255.0, 0.0), sizeOfSign / 100)
-    Imgproc.line(sign, horizontalLine.first, horizontalLine.second, Scalar(0.0, 255.0, 0.0), sizeOfSign / 100)
+    val whiteCenterText = "White center: $whiteCenter"
+    val cornersText = "Corners: " + corners.toList().size
+    writeTextForDebugImage(sign, listOf(cornersText, colorText, whiteCenterText), Point(100.0, 200.0))
 
     Imgcodecs.imwrite(debugProcessedFileLocation, sign)
+}
+
+private fun writeTextForDebugImage(
+    sign: Mat,
+    texts: List<String>,
+    startingPosition: Point,
+    font: Int = Imgproc.FONT_HERSHEY_SIMPLEX,
+    fontScale: Double = 2.0,
+    fontThickness: Int = 2,
+    fontColor: Scalar = Scalar(255.0, 255.0, 0.0)
+) {
+    for ((index, text) in texts.withIndex()) {
+        Imgproc.putText(sign, text, Point(startingPosition.x, startingPosition.y + index * 200), font, fontScale, fontColor, fontThickness)
+    }
 }
 
 
