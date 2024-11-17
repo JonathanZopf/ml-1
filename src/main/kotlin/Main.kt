@@ -63,7 +63,7 @@ fun main() {
                 println()
                 println("–––––––––––––––Starting classification of sign ${sign.getMinimalPath()}––––––––––––––––––")
                 try {
-                    val signProperties = analyzeSign(sign)
+                    val signProperties = analyzeSign(sign, true)
                     val classification = learnerImplementation.classify(signProperties.toFeatureVector())
                     println("Sign ${sign.getMinimalPath()} is classified as $classification")
                     if (classification == sign.getClassification()) {

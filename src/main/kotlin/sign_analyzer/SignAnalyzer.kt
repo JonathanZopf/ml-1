@@ -21,13 +21,14 @@ import kotlin.math.sqrt
 fun analyzeSign(loadableSign: LoadableSign, writeDebugImage : Boolean = false) : SignProperties {
     try {
         val sign = loadableSign.loadImage()
+        // Resize the image to a fixed size to make the analysis more consistent
+        val scale = 3000.0 / maxOf(sign.width(), sign.height())
+        val resizedSign = Mat()
+        Imgproc.resize(sign, resizedSign, Size(sign.width() * scale, sign.height() * scale))
+
         val croppedSignWithContour = cropSign(sign)
         val croppedSign = croppedSignWithContour.first
         val contour = croppedSignWithContour.second
-
-        if (writeDebugImage) {
-            writeCroppedSign(croppedSign)
-        }
 
         // Corners are the extreme points of the sign. They give a rough idea of the shape of the sign. There are arbitrary in number.
         val corners = findCorners(sign)
@@ -65,17 +66,24 @@ fun analyzeSign(loadableSign: LoadableSign, writeDebugImage : Boolean = false) :
 /**
  * Write the debug image with the result of the sign analysis.
  * The image will be written to the directory specified in the resources folder.
- * @param sign The sign image. Will be the base for the debug image.
- * @param extremities The extreme points of the sign. Will be marked with a red circle.
+ * @param sign The sign image. Will be the base for the debug image..
  * @param colorsTotalSign The colors of the sign. Will be written to the image as text.
  * @param whiteCenter The result of the white center analyzing. Will be written to the image as text.
  * @param verticalLine The vertical line of the sign. Will be drawn to the image as a green line.
  */
-private fun writeDebugResultImage(sign: Mat, corners: MatOfPoint, colorsTotalSign: List<SignColor>, whiteCenter: WhiteCenterAnalyzingResult, verticalLine: Pair<Point, Point>, horizontalLine: Pair<Point, Point>) {
+private fun writeDebugResultImage(
+    sign: Mat,
+    corners: MatOfPoint,
+    colorsTotalSign: List<SignColor>,
+    whiteCenter: WhiteCenterAnalyzingResult,
+    verticalLine: Pair<Point, Point>,
+    horizontalLine: Pair<Point, Point>
+) {
     val classloader = Thread.currentThread().contextClassLoader
     val fileLocationFile = classloader.getResourceAsStream("debug_output_location.txt")
         ?: throw IllegalArgumentException("There is no debug_output_location in the resources folder")
     val debugProcessedFileLocation = fileLocationFile.bufferedReader().use { it.readText() } + System.currentTimeMillis() + ".jpg"
+
     // Check if the directory exists
     val directory = File(debugProcessedFileLocation.substringBeforeLast("/"))
     if (!directory.exists()) {
@@ -102,10 +110,12 @@ private fun writeDebugResultImage(sign: Mat, corners: MatOfPoint, colorsTotalSig
 
     // Write the recognized shape and the horizontal and vertical line to the image
     Imgproc.putText(sign, "Corners count: " + corners.toList().size, Point(100.0, 2400.0), Imgproc.FONT_HERSHEY_SIMPLEX, 1.0, Scalar(255.0, 0.0, 0.0), 2)
-    Imgproc.drawContours(sign, listOf(MatOfPoint(verticalLine.first, verticalLine.second),  MatOfPoint(horizontalLine.first, horizontalLine.second)), -1, Scalar(0.0, 255.0, 0.0), sizeOfSign / 100)
+    Imgproc.line(sign, verticalLine.first, verticalLine.second, Scalar(0.0, 255.0, 0.0), sizeOfSign / 100)
+    Imgproc.line(sign, horizontalLine.first, horizontalLine.second, Scalar(0.0, 255.0, 0.0), sizeOfSign / 100)
 
     Imgcodecs.imwrite(debugProcessedFileLocation, sign)
 }
+
 
 private fun writeCroppedSign(croppedSign: Mat) {
     val classloader = Thread.currentThread().contextClassLoader
