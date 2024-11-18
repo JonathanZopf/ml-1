@@ -6,7 +6,6 @@ import org.hszg.classification.summarizeClassificationResults
 import org.hszg.learner_implementations.DecisionTree
 import org.hszg.learner_implementations.KNearestNeighbor
 import org.hszg.learner_implementations.NeuronalNetwork
-import org.hszg.sign_analyzer.SignAnalysisException
 import org.hszg.sign_analyzer.analyzeSign
 import org.hszg.training.TrainingData
 import org.hszg.training.readTrainingData
@@ -15,6 +14,8 @@ import org.hszg.training.writeTrainingData
 fun main() {
     OpenCV.loadLocally()
     println("Getting all images ...")
+    println("Welcome. Do you want to stop the execution of the program when an exception occurs? Press y for yes or any other button for no.")
+    val stopOnException = readlnOrNull() == "y"
     val signs = getAllSignsForTrainingAndClassification(1000, 500)
     println("Do you want to train the model(t) or classify the model (c)?")
     val input = readlnOrNull()
@@ -24,8 +25,12 @@ fun main() {
                 try {
                     val signProperties = analyzeSign(it, true)
                     writeTrainingData(TrainingData(it.getClassification(), signProperties.toFeatureVector()))
-                } catch (e: SignAnalysisException) {
-                    println(SignAnalysisException("An error occurred while analyzing sign "+ it.getMinimalPath()))
+                } catch (e: Exception) {
+                    if (stopOnException) {
+                        throw e
+                    }
+                    println("!!!An error occurred while analyzing sign " + it.getMinimalPath() + "!!!")
+                    println("!!!The analysis of the sign will be skipped!!!")
                 }
             }
         }
@@ -73,9 +78,10 @@ fun main() {
                         println("❌Sign was classified wrongly (actual type: ${sign.getClassification()})")
                         correctIdentifications.add(false)
                     }
-                } catch (e: SignAnalysisException) {
-                    throw e
-                    println(e.message)
+                } catch (e: Exception) {
+                    if (stopOnException) {
+                        throw e
+                    }
                     println("!!!An error occurred while analyzing sign " + sign.getMinimalPath() + "!!!")
                     println("!!!The analysis of the sign will be skipped, but counted as falsely identified!!!")
                     correctIdentifications.add(false)

@@ -1,22 +1,16 @@
 package org.hszg.sign_analyzer.color_analyzer
 
+import org.hszg.sign_properties.ApproximatedColor
 import java.awt.Color
 import kotlin.math.pow
+import kotlin.math.sqrt
 
-enum class ApproximatedColor {
-    WHITE, BLACK, RED, YELLOW, BLUE;
-
-    fun toRGB(): DoubleArray {
-        return when (this) {
-            WHITE -> doubleArrayOf(255.0, 255.0, 255.0)
-            BLACK -> doubleArrayOf(0.0, 0.0, 0.0)
-            RED -> doubleArrayOf(255.0, 0.0, 0.0)
-            YELLOW -> doubleArrayOf(255.0, 255.0, 0.0)
-            BLUE -> doubleArrayOf(0.0, 0.0, 255.0)
-        }
-    }
-}
-
+/**
+ * Enum class for the color schemes of the signs. Used to simplify the color detection.
+ * A color scheme consists of approximated colors and their RGB values.
+ * Different color schemes exist to allow for color approximation in different lighting conditions.
+ * @property colors A map of approximated colors and their RGB values.
+ */
 enum class ColorScheme(
     private val colors: Map<ApproximatedColor, Color>
 ) {
@@ -66,26 +60,52 @@ enum class ColorScheme(
         )
     );
 
+    /**
+     * Calculates the distance of pixels of a sign to the color scheme.
+     * The distance is the sum of the squared differences of the RGB values of the pixel and the approximated color.
+     * Long to avoid overflow.
+     * @param pixels The pixels of the sign.
+     * @return The distance of the pixels to the color scheme.
+     */
     fun calculateDistanceToColorScheme(pixels: List<Color>): Long {
         return pixels.sumOf {
             findBestMatchingColorWithDistance(it).second.toLong()
         }
     }
 
+    /**
+     * Finds the best matching color of a pixel in the color scheme.
+     * The best matching color is the one with the smallest distance to the pixel.
+     * @param pixel The pixel to find the best matching color for.
+     * @return The best matching color.
+     */
     fun findBestMatchingColor(pixel: Color): ApproximatedColor {
        return findBestMatchingColorWithDistance(pixel).first
     }
 
+    /**
+     * Finds the best matching color of a pixel in the color scheme and also returns the distance to the pixel.
+     * The best matching color is the one with the smallest distance to the pixel.
+     * @param pixel The pixel to find the best matching color for.
+     * @return The best matching color and the distance to the pixel.
+     */
     private fun findBestMatchingColorWithDistance(pixel: Color): Pair<ApproximatedColor, Int> {
         val closestColor = colors.minByOrNull { (_, color) ->
             calculateDistanceToColor(pixel, color)
-        } ?: throw IllegalArgumentException("No colors in the scheme")
+        }!!
 
         return closestColor.key to calculateDistanceToColor(pixel, closestColor.value)
     }
 
+    /**
+     * Calculates the distance of a pixel to a color.
+     * The distance is the Euclidean distance of the RGB values of the pixel and the color.
+     * @param pixel The pixel to calculate the distance for.
+     * @param colorToCompare The color to compare the pixel to.
+     * @return The distance of the pixel to the color.
+     */
     private fun calculateDistanceToColor(pixel: Color, colorToCompare: Color): Int {
-        return ((pixel.red - colorToCompare.red).toDouble().pow(2.0) +
+        return sqrt((pixel.red - colorToCompare.red).toDouble().pow(2.0) +
                 (pixel.green - colorToCompare.green).toDouble().pow(2.0) +
                 (pixel.blue - colorToCompare.blue).toDouble().pow(2.0)).toInt()
     }

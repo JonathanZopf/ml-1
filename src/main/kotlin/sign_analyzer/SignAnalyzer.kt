@@ -6,7 +6,6 @@ import org.hszg.SignLoading.LoadableSign
 import org.hszg.sign_analyzer.color_analyzer.WhiteCenterAnalyzingResult
 import org.hszg.sign_analyzer.extremities_finder.findCorners
 import org.hszg.sign_properties.SignColor
-import org.hszg.sign_properties.SignColorNew
 import org.hszg.sign_properties.SignProperties
 import org.opencv.core.*
 import org.opencv.imgcodecs.Imgcodecs
@@ -16,14 +15,18 @@ import kotlin.math.floor
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
+/**
+ * Analyze the sign and return the properties of the sign.
+ * The properties include the colors of the sign, the number of corners the center of the white pixels.
+ * @param loadableSign The sign to analyze.
+ * @param writeDebugImage If true, a debug image will be written to the directory specified in the resources folder.
+ * @return The properties of the sign.
+ */
 
-@Throws(SignAnalysisException::class)
 fun analyzeSign(loadableSign: LoadableSign, writeDebugImage : Boolean = false) : SignProperties {
-    try {
         val sign = loadableSign.loadImage()
         // Resize the image to a fixed size to make the analysis more consistent
-        val scale = 3000.0 / maxOf(sign.width(), sign.height())
-        Imgproc.resize(sign, sign, Size(sign.width() * scale, sign.height() * scale))
+        Imgproc.resize(sign, sign, Size(2000.0, 2000.0))
 
         val croppedSignWithContour = cropSign(sign)
         val croppedSign = croppedSignWithContour.first
@@ -51,10 +54,6 @@ fun analyzeSign(loadableSign: LoadableSign, writeDebugImage : Boolean = false) :
             cornersCountNormalized = cornersCountNormalizer,
             whiteCenter = whiteCenter,
         )
-    } catch (e: Exception) {
-        throw e
-        throw SignAnalysisException("Error during sign analysis", e)
-    }
 }
 
 /**
@@ -68,7 +67,7 @@ private fun writeDebugResultImage(
     sign: Mat,
     croppingContour: MatOfPoint,
     corners: List<Point>,
-    colorsTotalSign: List<SignColorNew>,
+    colorsTotalSign: List<SignColor>,
     whiteCenter: WhiteCenterAnalyzingResult,
 ) {
     val classloader = Thread.currentThread().contextClassLoader

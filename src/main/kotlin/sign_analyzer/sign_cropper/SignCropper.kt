@@ -1,12 +1,10 @@
-import org.hszg.sign_analyzer.SignAnalysisException
 import org.opencv.core.*
 import org.opencv.imgproc.Imgproc
 
 /**
  * Crops the sign from the background and makes the background transparent.
  * Furthermore, returns the contour of the sign which is the outermost shape of the sign.
- * Gets an uncropped sign in RGBA format and returns the cropped sign in BGRA format.
- * @param originalSign The original sign image in RGB format.
+ * @param originalSign The original sign image in RGBA format.
  * @return The cropped sign with a transparent background.
  */
 fun cropSign(originalSign: Mat): Pair<Mat, MatOfPoint> {
@@ -14,14 +12,7 @@ fun cropSign(originalSign: Mat): Pair<Mat, MatOfPoint> {
     val gray = Mat()
     Imgproc.cvtColor(originalSign, gray, Imgproc.COLOR_RGBA2GRAY)
 
-    // Apply Canny edge detection
-    val edges = Mat()
-    Imgproc.Canny(gray, edges, 100.0, 200.0)
-
-    // Find contours
-    val contours = ArrayList<MatOfPoint>()
-    val hierarchy = Mat()
-    Imgproc.findContours(edges, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE)
+    val contours = getAllContoursAdapting(gray, 100.0, 200.0)
 
     // Find the largest contour
     var largestContour: MatOfPoint? = null
@@ -34,12 +25,34 @@ fun cropSign(originalSign: Mat): Pair<Mat, MatOfPoint> {
         }
     }
 
-    // If no contour was found, throw an exception
-    if (largestContour == null) {
-        throw SignAnalysisException("No contour found")
-    }
+    return Pair(originalSign, largestContour!!)
+}
 
-    return Pair(getSignWithOutsideTransparent(originalSign, largestContour), largestContour)
+/**
+ * Recursively finds all contours of a sign by adapting the Canny edge detection thresholds.
+ * @param grayscaleSign The sign in grayscale format.
+ * @param threshold1 The first threshold for the Canny edge detection.
+ * @param threshold2 The second threshold for the Canny edge detection.
+ * @return A list of all contours of the sign.
+ * @throws IllegalStateException If no contour is found even after adapting the thresholds.
+ */
+private fun getAllContoursAdapting(grayscaleSign: Mat, threshold1: Double, threshold2: Double): List<MatOfPoint> {
+    if (threshold1 < 1.0 || threshold2 < 1.0) {
+        throw IllegalStateException("No contour found")
+    }
+    // Apply Canny edge detection
+    val edges = Mat()
+    Imgproc.Canny(grayscaleSign, edges, threshold1, threshold2)
+
+    // Find contours
+    val contours = ArrayList<MatOfPoint>()
+    val hierarchy = Mat()
+    Imgproc.findContours(edges, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE)
+
+    if (contours.isEmpty()) {
+        return getAllContoursAdapting(grayscaleSign, threshold1 / 1.5, threshold2 / 1.5)
+    }
+    return contours
 }
 
 /**
