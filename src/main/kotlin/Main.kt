@@ -74,6 +74,7 @@ fun main() {
                         correctIdentifications.add(false)
                     }
                 } catch (e: SignAnalysisException) {
+                    throw e
                     println(e.message)
                     println("!!!An error occurred while analyzing sign " + sign.getMinimalPath() + "!!!")
                     println("!!!The analysis of the sign will be skipped, but counted as falsely identified!!!")

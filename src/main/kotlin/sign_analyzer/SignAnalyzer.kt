@@ -2,11 +2,11 @@ package org.hszg.sign_analyzer
 
 import analyzeColors
 import cropSign
-import normalizeBrightness
 import org.hszg.SignLoading.LoadableSign
 import org.hszg.sign_analyzer.color_analyzer.WhiteCenterAnalyzingResult
 import org.hszg.sign_analyzer.extremities_finder.findCorners
 import org.hszg.sign_properties.SignColor
+import org.hszg.sign_properties.SignColorNew
 import org.hszg.sign_properties.SignProperties
 import org.opencv.core.*
 import org.opencv.imgcodecs.Imgcodecs
@@ -26,7 +26,7 @@ fun analyzeSign(loadableSign: LoadableSign, writeDebugImage : Boolean = false) :
         Imgproc.resize(sign, sign, Size(sign.width() * scale, sign.height() * scale))
 
         val croppedSignWithContour = cropSign(sign)
-        val croppedSign = normalizeBrightness(croppedSignWithContour.first)
+        val croppedSign = croppedSignWithContour.first
         val croppingContour = croppedSignWithContour.second
 
         // Corners are the extreme points of the sign. They give a rough idea of the shape of the sign. There are arbitrary in number.
@@ -52,6 +52,7 @@ fun analyzeSign(loadableSign: LoadableSign, writeDebugImage : Boolean = false) :
             whiteCenter = whiteCenter,
         )
     } catch (e: Exception) {
+        throw e
         throw SignAnalysisException("Error during sign analysis", e)
     }
 }
@@ -67,7 +68,7 @@ private fun writeDebugResultImage(
     sign: Mat,
     croppingContour: MatOfPoint,
     corners: List<Point>,
-    colorsTotalSign: List<SignColor>,
+    colorsTotalSign: List<SignColorNew>,
     whiteCenter: WhiteCenterAnalyzingResult,
 ) {
     val classloader = Thread.currentThread().contextClassLoader
@@ -102,6 +103,8 @@ private fun writeDebugResultImage(
     val cornersText = "Corners: " + corners.toList().size
     writeTextForDebugImage(sign, listOf(cornersText, colorText, whiteCenterText), Point(100.0, 200.0))
 
+    // Concert to BGR for writing
+    Imgproc.cvtColor(sign, sign, Imgproc.COLOR_RGBA2BGR)
     Imgcodecs.imwrite(debugProcessedFileLocation, sign)
 }
 

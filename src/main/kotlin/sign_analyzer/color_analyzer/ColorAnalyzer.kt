@@ -1,12 +1,15 @@
+import org.hszg.sign_analyzer.color_analyzer.ColorScheme
 import org.hszg.sign_analyzer.color_analyzer.WhiteCenterAnalyzingResult
 import org.hszg.sign_properties.ApproximatedColor
 import org.hszg.sign_properties.SignColor
+import org.hszg.sign_properties.SignColorNew
 import org.opencv.core.*
 import org.opencv.imgcodecs.Imgcodecs
 import org.opencv.imgproc.CLAHE
 import org.opencv.imgproc.Imgproc
 import java.awt.Color
 import java.awt.Image
+import java.io.File
 import java.util.*
 import kotlin.collections.HashMap
 import kotlin.math.abs
@@ -20,116 +23,20 @@ import kotlin.math.sqrt
  * @param croppedSign The cropped sign to analyze.
  * @return A list of SignColor objects representing the colors on the sign.
  */
-fun analyzeColors(croppedSign: Mat) : Pair<List<SignColor>, WhiteCenterAnalyzingResult>{
+fun analyzeColors(croppedSign: Mat) : Pair<List<SignColorNew>, WhiteCenterAnalyzingResult>{
     if (croppedSign.empty()){
         throw IllegalArgumentException("The input image is empty")
     }
 
-    val nonTransparentPixels = getNonTransparentPixels(croppedSign)
+    val currentTime = System.currentTimeMillis()
+    val colorScheme = findBestColorScheme(croppedSign)
+    println("Color Scheme determination took ${System.currentTimeMillis() - currentTime} ms and resulted in ${colorScheme.name}")
 
-    val pixelsOfColor = getPixelsOfColor(croppedSign)
 
-    return Pair(convertToSignColorList(pixelsOfColor, nonTransparentPixels), getWhiteCenter(croppedSign))
-}
+    val colors = getColors(croppedSign, colorScheme)
+    saveDebugApproximatedColorImage(croppedSign, colorScheme)
 
-/**
- * Normalizes the brightness of an image.
- * Stolen from https://stackoverflow.com/questions/56905592/automatic-contrast-and-brightness-adjustment-of-a-color-photo-of-a-sheet-of-pape
- * @param originalSign The original sign image.
- * @param clipHistPercent The percentage of the histogram to clip.
- * @return The normalized image.
- */
-fun normalizeBrightness(originalSign: Mat, clipHistPercent: Double = 1.0): Mat {
-    if (originalSign.empty()){
-        throw IllegalArgumentException("The input image is empty")
-    }
-
-    val gray = Mat()
-    // Convert image to grayscale
-    Imgproc.cvtColor(originalSign, gray, Imgproc.COLOR_BGRA2GRAY)
-
-    // Calculate grayscale histogram
-    val histSize = MatOfInt(256)
-    val histRange = MatOfFloat(0f, 256f)
-    val hist = Mat()
-    Imgproc.calcHist(listOf(gray), MatOfInt(0), Mat(), hist, histSize, histRange)
-
-    val accumulator = mutableListOf<Double>()
-    accumulator.add(hist.get(0, 0)[0])
-
-    // Calculate cumulative distribution from the histogram
-    for (i in 1 until hist.rows()) {
-        accumulator.add(accumulator[i - 1] + hist.get(i, 0)[0])
-    }
-
-    // Locate points to clip
-    val maximum = accumulator.last()
-    var clipHistPercent = clipHistPercent * (maximum / 100.0) / 2.0
-
-    // Locate left cut
-    var minimumGray = 0
-    while (accumulator[minimumGray] < clipHistPercent) {
-        minimumGray++
-    }
-
-    // Locate right cut
-    var maximumGray = accumulator.size - 1
-    while (accumulator[maximumGray] >= maximum - clipHistPercent) {
-        maximumGray--
-    }
-
-    // Calculate alpha and beta
-    val alpha = 255.0 / (maximumGray - minimumGray)
-    val beta = -minimumGray * alpha
-
-    // Adjust image brightness and contrast
-    val autoResult = Mat()
-    originalSign.convertTo(autoResult, CvType.CV_8UC1, alpha, beta)
-
-    return autoResult
-}
-
-/**
- * Counts the non-transparent pixels in a cropped sign.
- * @param croppedSign The cropped sign to analyze.
- * @return The number of non-transparent pixels in the sign.
- */
-fun getNonTransparentPixels(croppedSign: Mat): Int {
-    var nonTransparentPixels = 0
-    for (row in 0 until croppedSign.rows()) {
-        for (col in 0 until croppedSign.cols()) {
-            val pixel = croppedSign.get(row, col)
-            if (pixel[3] > 0) {
-                nonTransparentPixels++
-            }
-        }
-    }
-    return nonTransparentPixels
-}
-
-/**
- * Analyzes the colors of a sign (or a part) and returns a list of approximated colors with their pixel count on the sign.
- * Finds all colors on the sign and approximates them to the closest color from the ApproximatedColor enum.
- * @param croppedSign The cropped sign to analyze.
- * @return A list of pairs, each containing an approximated color and its pixel count on the sign.
- */
-private fun getPixelsOfColor(croppedSign: Mat) : List<Pair<ApproximatedColor, Int>> {
-    // Count the occurrences of each color and save the count of pixels in a hashmap
-    val counted = HashMap<ApproximatedColor, Int>()
-    for (approximatedColor in ApproximatedColor.entries) {
-        counted[approximatedColor] = 0
-    }
-
-    for (row in 0 until croppedSign.rows()) {
-        for (col in 0 until croppedSign.cols()) {
-            val pixel = croppedSign.get(row, col)
-            if (pixel[3] > 0) {
-                val color = getApproximatedColor(Color(pixel[2].toInt(), pixel[1].toInt(), pixel[0].toInt()))
-                counted[color] = counted.get(color)!! + 1
-            }
-        }
-    }
-    return counted.toList()
+    return Pair(colors, getWhiteCenter(croppedSign))
 }
 
 /**
@@ -202,20 +109,90 @@ private fun getApproximatedColor(color: Color) : ApproximatedColor {
     return bestMatch.first
 }
 
-/**
- * Converts a list of approximated colors with their pixel count to a list of SignColor objects.
- * Necessary because the share of each color on the sign needs to be calculated from the pixel count.
- * @param pixelsOfColor The list of approximated colors with their pixel count.
- * @param nonTransparentPixels The number of non-transparent pixels in the sign.
- */
 
-private fun convertToSignColorList(pixelsOfColor: List<Pair<ApproximatedColor, Int>>, nonTransparentPixels: Int): List<SignColor> {
-    return pixelsOfColor.map { (color, count) ->
-        val share = (count.toDouble() / nonTransparentPixels)
-        if (share.isNaN()) {
-            SignColor(color, 0.0)
-        } else {
-            SignColor(color, share)
+private fun getAllPixelColorsOfSign(sign: Mat) : List<Color> {
+    val pixels = ArrayList<Color>()
+    for (row in 0 until sign.rows()) {
+        for (col in 0 until sign.cols()) {
+            val pixel = sign.get(row, col)
+            if (pixel[3] > 0.0) {
+                pixels.add(Color(pixel[0].toInt(), pixel[1].toInt(), pixel[2].toInt()))
+            }
+
         }
     }
+    return pixels
+}
+
+private fun findBestColorScheme(croppedSign: Mat) : ColorScheme {
+    val pixels = getAllPixelColorsOfSign(croppedSign)
+    for (colorScheme in ColorScheme.entries) {
+        println("Distance to ${colorScheme.name}: ${colorScheme.calculateDistanceToColorScheme(pixels) / pixels.size}")
+    }
+    val bestColorScheme = ColorScheme.entries.toTypedArray().minByOrNull { it.calculateDistanceToColorScheme(pixels) }
+        ?: throw IllegalArgumentException("No color schemes available")
+    return bestColorScheme
+}
+
+fun getColors(croppedSign: Mat, colorScheme: ColorScheme) : List<SignColorNew> {
+    val pixels = getAllPixelColorsOfSign(croppedSign)
+    val colors = HashMap<org.hszg.sign_analyzer.color_analyzer.ApproximatedColor, Int>()
+    for (approximatedColor in org.hszg.sign_analyzer.color_analyzer.ApproximatedColor.entries) {
+        colors[approximatedColor] = 0
+    }
+
+    for (pixel in pixels) {
+        val approximatedColor = colorScheme.findBestMatchingColor(pixel)
+        colors[approximatedColor] = colors[approximatedColor]!! + 1
+    }
+
+    val totalPixels = pixels.size
+    val signColors = ArrayList<SignColorNew>()
+    for (approximatedColor in org.hszg.sign_analyzer.color_analyzer.ApproximatedColor.entries) {
+        val share = colors[approximatedColor]!! / totalPixels.toDouble()
+        signColors.add(SignColorNew(approximatedColor, share))
+    }
+
+    return signColors
+}
+
+private fun saveDebugApproximatedColorImage(croppedSign: Mat, colorScheme: ColorScheme) {
+    val debugImage = Mat(croppedSign.size(), croppedSign.type())
+
+    for (row in 0 until croppedSign.rows()) {
+        for (col in 0 until croppedSign.cols()) {
+            val pixel = croppedSign.get(row, col)
+            if (pixel[3] > 0) { // Check alpha channel to ensure it's not transparent
+                val originalColor = Color(pixel[0].toInt(), pixel[1].toInt(), pixel[2].toInt())
+                val approximatedColor = colorScheme.findBestMatchingColor(originalColor)
+
+                // Replace pixel with approximated color
+                val rgb = approximatedColor.toRGB()
+                pixel[0] = rgb[0]
+                pixel[1] = rgb[1]
+                pixel[2] = rgb[2]
+                debugImage.put(row, col, *pixel)
+            } else {
+                // Preserve alpha for transparent pixels
+                debugImage.put(row, col, 0.0, 0.0, 0.0, 0.0)
+            }
+        }
+    }
+
+    // Convert to BGR for saving
+    Imgproc.cvtColor(debugImage, debugImage, Imgproc.COLOR_RGBA2BGR)
+
+    val classloader = Thread.currentThread().contextClassLoader
+    val fileLocationFile = classloader.getResourceAsStream("debug_output_location.txt")
+        ?: throw IllegalArgumentException("There is no debug_output_location in the resources folder")
+    val debugProcessedFileLocation = fileLocationFile.bufferedReader().use { it.readText() } + System.currentTimeMillis() + "_approximated_colors.jpg"
+
+    // Check if the directory exists
+    val directory = File(debugProcessedFileLocation.substringBeforeLast("/"))
+    if (!directory.exists()) {
+        throw IllegalArgumentException("Invalid directory: $debugProcessedFileLocation")
+    }
+
+    Imgcodecs.imwrite(debugProcessedFileLocation, debugImage)
+    println("Debug image with approximated colors saved to $debugProcessedFileLocation")
 }

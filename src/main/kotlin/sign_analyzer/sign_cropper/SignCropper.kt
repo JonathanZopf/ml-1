@@ -5,14 +5,14 @@ import org.opencv.imgproc.Imgproc
 /**
  * Crops the sign from the background and makes the background transparent.
  * Furthermore, returns the contour of the sign which is the outermost shape of the sign.
- * Gets an uncropped sign in RGB format and returns the cropped sign in BGRA format.
+ * Gets an uncropped sign in RGBA format and returns the cropped sign in BGRA format.
  * @param originalSign The original sign image in RGB format.
  * @return The cropped sign with a transparent background.
  */
 fun cropSign(originalSign: Mat): Pair<Mat, MatOfPoint> {
     // Convert the image to binary based on the grayscale
     val gray = Mat()
-    Imgproc.cvtColor(originalSign, gray, Imgproc.COLOR_BGR2GRAY)
+    Imgproc.cvtColor(originalSign, gray, Imgproc.COLOR_RGBA2GRAY)
 
     // Apply Canny edge detection
     val edges = Mat()
@@ -44,28 +44,24 @@ fun cropSign(originalSign: Mat): Pair<Mat, MatOfPoint> {
 
 /**
  * Makes all pixels outside the convex hull transparent and returns the modified image.
- * Converts the image to BGRA format.
- * @param rgbSign The original sign image in RGB format.
+ * @param sign The original sign image in RGB format.
  * @param hull The convex hull that defines the sign.
  * @return The modified image with a transparent background.
  */
-private fun getSignWithOutsideTransparent(rgbSign: Mat, hull: MatOfPoint): Mat {
-    val rgbaSign = Mat()
-    Imgproc.cvtColor(rgbSign, rgbaSign, Imgproc.COLOR_BGR2BGRA)
-
+private fun getSignWithOutsideTransparent(sign: Mat, hull: MatOfPoint): Mat {
     // Create a mask based on the convex hull
-    val mask = Mat.zeros(rgbaSign.size(), CvType.CV_8UC1)
+    val mask = Mat.zeros(sign.size(), CvType.CV_8UC1)
     Imgproc.drawContours(mask, listOf(hull), -1, Scalar(255.0), Imgproc.FILLED)
 
     // Iterate over each pixel and set alpha to 0 where it's outside the convex hull
-    for (row in 0 until rgbaSign.rows()) {
-        for (col in 0 until rgbaSign.cols()) {
+    for (row in 0 until sign.rows()) {
+        for (col in 0 until sign.cols()) {
             val pixelMask = mask.get(row, col)[0]
             if (pixelMask == 0.0) { // Outside the hull
-                rgbaSign.put(row, col, 0.0, 0.0, 0.0, 0.0) // Make transparent
+                sign.put(row, col, 0.0, 0.0, 0.0, 0.0) // Make transparent
             }
         }
     }
 
-    return rgbaSign
+    return sign
 }

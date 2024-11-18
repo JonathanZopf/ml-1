@@ -3,6 +3,7 @@ package org.hszg.SignLoading
 import org.hszg.SignClassification
 import org.opencv.core.Mat
 import org.opencv.imgcodecs.Imgcodecs
+import org.opencv.imgproc.Imgproc
 
 /**
  * Represents a sign that can be loaded from the file system.
@@ -11,11 +12,13 @@ import org.opencv.imgcodecs.Imgcodecs
  */
 class LoadableSign(private val absolutePath: String, private val classification: SignClassification) {
     /**
-     * Loads the image from the file system based on the absolute path.
+     * Loads the image from the file system based on the absolute path and converts it to RGBA
      * @return The image as a [Mat] object.
      */
     fun loadImage(): Mat {
-        return Imgcodecs.imread(absolutePath)
+        val image = Imgcodecs.imread(absolutePath)
+        Imgproc.cvtColor(image, image, Imgproc.COLOR_BGR2RGBA)
+        return image
     }
 
     /**
