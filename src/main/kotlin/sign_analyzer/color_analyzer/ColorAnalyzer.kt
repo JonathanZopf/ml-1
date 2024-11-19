@@ -126,3 +126,21 @@ private fun getColors(croppedSign: Mat, colorScheme: ColorScheme) : List<SignCol
 
     return signColors
 }
+
+/**
+ * Creates a material where the original colors are replaced by the approximated colors.
+ * Also checks for the color scheme that minimizes the distance to the colors of the sign.
+ * Transparent pixels are not changed.
+ * @param sign The sign to analyze.
+ * @return The sign with the approximated colors.
+ */
+fun getSignWithApproximatedColors(sign: Mat) : Mat {
+    val colorScheme = findBestColorScheme(sign)
+    val pixels = getAllPixelColorsOfSignWithRowAndColumn(sign)
+    for ((row, col, color) in pixels) {
+        val approximatedColor = colorScheme.findBestMatchingColor(color)
+        val approximatedColorValues = approximatedColor.getRGBAArray()
+        sign.put(row, col, *approximatedColorValues)
+    }
+    return sign
+}

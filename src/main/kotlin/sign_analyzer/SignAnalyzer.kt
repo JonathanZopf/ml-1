@@ -11,9 +11,7 @@ import org.opencv.core.*
 import org.opencv.imgcodecs.Imgcodecs
 import org.opencv.imgproc.Imgproc
 import java.io.File
-import kotlin.math.floor
-import kotlin.math.roundToInt
-import kotlin.math.sqrt
+import kotlin.math.*
 
 /**
  * Analyze the sign and return the properties of the sign.
@@ -25,8 +23,6 @@ import kotlin.math.sqrt
 
 fun analyzeSign(loadableSign: LoadableSign, writeDebugImage : Boolean = false) : SignProperties {
         val sign = loadableSign.loadImage()
-        // Resize the image to a fixed size to make the analysis more consistent
-        Imgproc.resize(sign, sign, Size(2000.0, 2000.0))
 
         val croppedSignWithContour = cropSign(sign)
         val croppedSign = croppedSignWithContour.first
@@ -81,16 +77,22 @@ private fun writeDebugResultImage(
         throw IllegalArgumentException("Invalid directory: $debugProcessedFileLocation")
     }
 
+    val signSize = sqrt(sign.rows().toDouble().pow(2) + sign.cols().toDouble().pow(2))
+
     // Write corners to image
     for (point in corners) {
-        Imgproc.circle(sign, point, 100, Scalar(0.0, 0.0, 255.0), -1)
+        Imgproc.circle(sign, point,  ceil(signSize / 20).toInt(), Scalar(0.0, 0.0, 255.0), -1)
     }
 
     // Write contour to image
     val contour = croppingContour.toList()
     for (i in 0 until contour.size) {
-        Imgproc.line(sign, contour[i], contour[(i + 1) % contour.size], Scalar(0.0, 255.0, 0.0), 10)
+        Imgproc.line(sign, contour[i], contour[(i + 1) % contour.size], Scalar(0.0, 255.0, 0.0), ceil(signSize / 40).toInt())
     }
+
+    // Resize the image to a fixed size to make the analysis more consistent
+    // Done after writing the corners and contour to make sure they are in their original position
+    Imgproc.resize(sign, sign, Size(2000.0, 2000.0))
 
     // Write debug text to the image
     var colorText = ""
@@ -120,19 +122,3 @@ private fun writeTextForDebugImage(
         Imgproc.putText(sign, text, Point(startingPosition.x, startingPosition.y + index * 200), font, fontScale, fontColor, fontThickness)
     }
 }
-
-
-private fun writeCroppedSign(croppedSign: Mat) {
-    val classloader = Thread.currentThread().contextClassLoader
-    val fileLocationFile = classloader.getResourceAsStream("debug_output_location.txt")
-        ?: throw IllegalArgumentException("There is no debug_output_location in the resources folder")
-    val debugProcessedFileLocation = fileLocationFile.bufferedReader().use { it.readText() } + System.currentTimeMillis() + "_cropped" + ".jpg"
-    // Check if the directory exists
-    val directory = File(debugProcessedFileLocation.substringBeforeLast("/"))
-    if (!directory.exists()) {
-        throw IllegalArgumentException("Invalid directory: $debugProcessedFileLocation")
-    }
-
-    Imgcodecs.imwrite(debugProcessedFileLocation, croppedSign)
-}
-

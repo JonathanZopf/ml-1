@@ -10,4 +10,18 @@ import kotlin.math.sqrt
  */
 enum class ApproximatedColor {
     WHITE, BLACK, RED, YELLOW, BLUE;
+
+    /**
+     * Get the RGB values of the approximated color.
+     * @return An array of the RGB values.
+     */
+    fun getRGBAArray() : DoubleArray{
+        return when (this) {
+            WHITE -> doubleArrayOf(255.0, 255.0, 255.0, 255.0)
+            BLACK -> doubleArrayOf(0.0, 0.0, 0.0, 255.0)
+            RED -> doubleArrayOf(255.0, 0.0, 0.0, 255.0)
+            YELLOW -> doubleArrayOf(255.0, 255.0, 0.0, 255.0)
+            BLUE -> doubleArrayOf(0.0, 0.0, 255.0, 255.0)
+        }
+    }
 }
