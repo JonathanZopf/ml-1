@@ -18,7 +18,7 @@ fun findCorners(contourFromCropping: MatOfPoint): List<Point> {
     val size = sqrt(contour2f.size().area())
 
     // Approximate the polygon to reduce rounded corners
-    val epsilon = Imgproc.arcLength(contour2f, true) / size
+    val epsilon = Imgproc.arcLength(contour2f, true) / (3* size)
     val approxCurve2f = MatOfPoint2f()
     Imgproc.approxPolyDP(contour2f, approxCurve2f, epsilon, true)
 
