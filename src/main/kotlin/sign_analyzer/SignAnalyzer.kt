@@ -31,7 +31,7 @@ fun analyzeSign(loadableSign: LoadableSign, writeDebugImage : Boolean = false) :
         // Corners are the extreme points of the sign. They give a rough idea of the shape of the sign. There are arbitrary in number.
         val corners = findCorners(croppingContour)
 
-        val colors = analyzeColors(croppedSign)
+        val colors = analyzeColors(croppedSign, croppingContour)
         val colorsTotalSign = colors.first
         val whiteCenter = colors.second
         val cornersCountNormalizer = Math.clamp(corners.toList().size.toDouble() / 9, 0.0, 1.0)

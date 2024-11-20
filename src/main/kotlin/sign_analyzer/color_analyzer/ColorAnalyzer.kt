@@ -21,7 +21,7 @@ import kotlin.math.sqrt
  * @param croppedSign The cropped sign to analyze.
  * @return A list of SignColor objects representing the colors on the sign.
  */
-fun analyzeColors(croppedSign: Mat) : Pair<List<SignColor>, WhiteCenterAnalyzingResult>{
+fun analyzeColors(croppedSign: Mat, contour: MatOfPoint) : Pair<List<SignColor>, WhiteCenterAnalyzingResult>{
     if (croppedSign.empty()){
         throw IllegalArgumentException("The input image is empty")
     }
@@ -29,6 +29,8 @@ fun analyzeColors(croppedSign: Mat) : Pair<List<SignColor>, WhiteCenterAnalyzing
     val colorScheme = findBestColorScheme(croppedSign)
     val colors = getColors(croppedSign, colorScheme)
     val whiteCenter = getWhiteCenter(croppedSign, colorScheme)
+
+    saveDebugCenterSymbol(croppedSign, contour)
 
     return Pair(colors, whiteCenter)
 }
@@ -134,7 +136,7 @@ private fun getColors(croppedSign: Mat, colorScheme: ColorScheme) : List<SignCol
  * @param sign The sign to analyze.
  * @return The sign with the approximated colors.
  */
-fun getSignWithApproximatedColors(sign: Mat) : Mat {
+private fun getSignWithApproximatedColors(sign: Mat) : Mat {
     val colorScheme = findBestColorScheme(sign)
     val pixels = getAllPixelColorsOfSignWithRowAndColumn(sign)
     for ((row, col, color) in pixels) {
@@ -143,4 +145,76 @@ fun getSignWithApproximatedColors(sign: Mat) : Mat {
         sign.put(row, col, *approximatedColorValues)
     }
     return sign
+}
+fun findInnermostPoint(contour: MatOfPoint, imageSize: Size): Point {
+    // Step 1: Create a binary mask
+    val mask = Mat.zeros(imageSize, CvType.CV_8U)
+    val contours = listOf(contour)
+    Imgproc.drawContours(mask, contours, -1, Scalar(255.0), -1) // Filled contour
+
+    // Step 2: Apply the Distance Transform
+    val distTransform = Mat()
+    Imgproc.distanceTransform(mask, distTransform, Imgproc.DIST_L2, Imgproc.DIST_MASK_PRECISE)
+
+    // Step 3: Find the maximum distance and its location
+    val minMaxLoc = Core.minMaxLoc(distTransform)
+    val innermostPoint = minMaxLoc.maxLoc // Point of the maximum distance
+
+    return innermostPoint
+}
+private fun getCenterSymbolOfSign(sign: Mat, contour: MatOfPoint): Mat {
+    // Step 1: Get all pixel colors
+    val pixels = getAllPixelColorsOfSignWithRowAndColumn(sign)
+
+    // Step 2: Find the innermost point of the contour
+    val innermostPoint = findInnermostPoint(contour, sign.size())
+    val startRow = innermostPoint.y.toInt()
+    val startCol = innermostPoint.x.toInt()
+
+    // Step 3: Convert sign to RGB because the floodFill function requires a 3-channel image
+    val rgbSign = Mat()
+    Imgproc.cvtColor(sign, rgbSign, Imgproc.COLOR_RGBA2RGB)
+
+    // Step 4: Create a mask for flood-fill
+    val mask = Mat.zeros(Size(sign.cols() + 2.0, sign.rows() + 2.0), CvType.CV_8U) // +2 for border requirements of floodFill
+
+    // Step 5: Create a Mat to store the result
+    val result = Mat.zeros(sign.size(), sign.type())
+
+    // Step 6: Perform flood fill to find all connected pixels of the same color
+    Imgproc.floodFill(
+        rgbSign, // Input image
+        mask, // Mask
+        Point(startCol.toDouble(), startRow.toDouble()), // Starting point
+        Scalar(0.0), // No color change
+        Rect(), // Bounding box (not used here)
+        Scalar(0.0, 0.0, 0.0, 0.0), // Lower color difference (exact match)
+        Scalar(0.0, 0.0, 0.0, 0.0), // Upper color difference (exact match)
+        Imgproc.FLOODFILL_MASK_ONLY or Imgproc.FLOODFILL_FIXED_RANGE
+    )
+
+    // Step 7: Add the selected pixels to the result Mat
+    for ((row, col, color) in pixels) {
+        if (mask[row + 1, col + 1][0] > 0) { // Mask offset by 1 due to floodFill requirements
+            result.put(row, col, color.red.toDouble(), color.green.toDouble(), color.blue.toDouble(), 255.0)
+        }
+    }
+
+    // Mark the innermost point
+    Imgproc.circle(result, innermostPoint, 10, Scalar(0.0, 0.0, 255.0), -1)
+
+    return result
+}
+
+
+
+fun saveDebugCenterSymbol( sourceImage: Mat, contour : MatOfPoint) {
+    val centerSymbol = getCenterSymbolOfSign(getSignWithApproximatedColors(sourceImage), contour)
+
+    val classloader = Thread.currentThread().contextClassLoader
+    val fileLocationFile = classloader.getResourceAsStream("debug_output_location.txt")
+        ?: throw IllegalArgumentException("There is no debug_output_location in the resources folder")
+    val debugProcessedFileLocation = fileLocationFile.bufferedReader().use { it.readText() } + System.currentTimeMillis() + ".jpg"
+
+    Imgcodecs.imwrite(debugProcessedFileLocation, centerSymbol)
 }
