@@ -7,20 +7,21 @@ import kotlin.math.sqrt
 /**
  * Enum class for the approximated colors of the signs.
  * Approximated colors are used to simplify the color detection.
- * @param standardColor The standard color of the approximated color. Used to calculate the distance of a pixel's color to the standard color.
  */
-enum class ApproximatedColor(private val standardColor: Color) {
-    RED(Color.red), YELLOW(Color.yellow), BLUE(Color.blue), WHITE(Color.white), BLACK(Color.black);
+enum class ApproximatedColor {
+    WHITE, BLACK, RED, YELLOW, BLUE;
 
     /**
-     * Calculate the distance of a pixel's color to the standard color.
-     * @param colorToCompare The color to compare with the standard color of the approximation.
+     * Get the RGB values of the approximated color.
+     * @return An array of the RGB values.
      */
-    fun calculateDistanceFromColor(colorToCompare: Color) : Double {
-        return sqrt(
-            (colorToCompare.red - standardColor.red).toDouble().pow(2.0) +
-                    (colorToCompare.green - standardColor.green).toDouble().pow(2.0) +
-                    (colorToCompare.blue - standardColor.blue).toDouble().pow(2.0)
-        )
+    fun getRGBAArray() : DoubleArray{
+        return when (this) {
+            WHITE -> doubleArrayOf(255.0, 255.0, 255.0, 255.0)
+            BLACK -> doubleArrayOf(0.0, 0.0, 0.0, 255.0)
+            RED -> doubleArrayOf(255.0, 0.0, 0.0, 255.0)
+            YELLOW -> doubleArrayOf(255.0, 255.0, 0.0, 255.0)
+            BLUE -> doubleArrayOf(0.0, 0.0, 255.0, 255.0)
+        }
     }
 }
