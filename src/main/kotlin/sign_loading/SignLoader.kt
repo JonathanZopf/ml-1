@@ -12,11 +12,10 @@ import java.io.File
 fun getAllSignsForTrainingAndClassification(numberTrainingSigns: Int, numberClassificationSigns: Int): LoadableSignCollection {
     val allSigns = getAllSigns()
     if (allSigns.size < numberTrainingSigns + numberClassificationSigns) {
-        throw IllegalArgumentException("There are not enough signs to split them into training and classificatiion signs.")
+        throw IllegalArgumentException("There are not enough signs to split them into training and classification signs.")
     }
 
-    //TODO remove after testing
-    val shuffledSigns = allSigns.filter { it.getClassification() == SignClassification.FAHRTRICHTUNG_LINKS || it.getClassification() == SignClassification.FAHRTRICHTUNG_RECHTS}.toList().sortedBy { it.hashCode() }
+    val shuffledSigns = allSigns.sortedBy { it.hashCode() }
     return LoadableSignCollection(shuffledSigns.take(numberTrainingSigns), shuffledSigns.takeLast(numberClassificationSigns))
 }
 

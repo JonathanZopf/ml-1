@@ -2,8 +2,9 @@ package org.hszg.sign_analyzer
 
 import analyzeColors
 import cropSign
+import getSignWithApproximatedColor
 import org.hszg.SignLoading.LoadableSign
-import org.hszg.sign_analyzer.color_analyzer.WhiteCenterAnalyzingResult
+import org.hszg.sign_analyzer.center_symbol_analyzer.CenterSymbolAnalyzerResult
 import org.hszg.sign_analyzer.extremities_finder.findCorners
 import org.hszg.sign_properties.SignColor
 import org.hszg.sign_properties.SignProperties
@@ -31,9 +32,11 @@ fun analyzeSign(loadableSign: LoadableSign, writeDebugImage : Boolean = false) :
         // Corners are the extreme points of the sign. They give a rough idea of the shape of the sign. There are arbitrary in number.
         val corners = findCorners(croppingContour)
 
-        val colors = analyzeColors(croppedSign, croppingContour)
+        val colors = analyzeColors(croppedSign)
         val colorsTotalSign = colors.first
-        val whiteCenter = colors.second
+        val approximatedColorSign = colors.second
+        val centerSymbol = analyzeCenterSymbol(approximatedColorSign, colorsTotalSign, croppingContour)
+
         val cornersCountNormalizer = Math.clamp(corners.toList().size.toDouble() / 9, 0.0, 1.0)
 
         if (writeDebugImage) {
@@ -42,13 +45,13 @@ fun analyzeSign(loadableSign: LoadableSign, writeDebugImage : Boolean = false) :
                 croppingContour,
                 corners,
                 colorsTotalSign,
-                whiteCenter
+                centerSymbol
             )
         }
         return SignProperties(
             colors = colorsTotalSign,
             cornersCountNormalized = cornersCountNormalizer,
-            whiteCenter = whiteCenter,
+            centerSymbolAnalyzerResult = centerSymbol
         )
 }
 
@@ -57,14 +60,14 @@ fun analyzeSign(loadableSign: LoadableSign, writeDebugImage : Boolean = false) :
  * The image will be written to the directory specified in the resources folder.
  * @param sign The sign image. Will be the base for the debug image..
  * @param colorsTotalSign The colors of the sign. Will be written to the image as text.
- * @param whiteCenter The result of the white center analyzing. Will be written to the image as text.
+ * @param centerSymbolAnalyzerResult The result of the center symbol analysis. Will be written to the image as text.
  */
 private fun writeDebugResultImage(
     sign: Mat,
     croppingContour: MatOfPoint,
     corners: List<Point>,
     colorsTotalSign: List<SignColor>,
-    whiteCenter: WhiteCenterAnalyzingResult,
+    centerSymbolAnalyzerResult: CenterSymbolAnalyzerResult
 ) {
     val classloader = Thread.currentThread().contextClassLoader
     val fileLocationFile = classloader.getResourceAsStream("debug_output_location.txt")
@@ -100,9 +103,9 @@ private fun writeDebugResultImage(
         val percentage: String = (color.getShareOnSign() * 100).roundToInt().toString() + "%"
         colorText += color.getApproximatedColor().name + ": " + percentage + ", "
     }
-    val whiteCenterText = "White center: $whiteCenter"
+    val centerSymbolAnalyzerResultText = "Center symbol: $centerSymbolAnalyzerResult"
     val cornersText = "Corners: " + corners.toList().size
-    writeTextForDebugImage(sign, listOf(cornersText, colorText, whiteCenterText), Point(100.0, 200.0))
+    writeTextForDebugImage(sign, listOf(cornersText, colorText, centerSymbolAnalyzerResultText), Point(100.0, 200.0))
 
     // Concert to BGR for writing
     Imgproc.cvtColor(sign, sign, Imgproc.COLOR_RGBA2BGR)
