@@ -15,8 +15,8 @@ fun getAllSignsForTrainingAndClassification(numberTrainingSigns: Int, numberClas
         throw IllegalArgumentException("There are not enough signs to split them into training and classificatiion signs.")
     }
 
-    //
-    val shuffledSigns = allSigns.sortedBy { it.hashCode() }
+    //TODO remove after testing
+    val shuffledSigns = allSigns.filter { it.getClassification() == SignClassification.FAHRTRICHTUNG_LINKS || it.getClassification() == SignClassification.FAHRTRICHTUNG_RECHTS}.toList().sortedBy { it.hashCode() }
     return LoadableSignCollection(shuffledSigns.take(numberTrainingSigns), shuffledSigns.takeLast(numberClassificationSigns))
 }
 

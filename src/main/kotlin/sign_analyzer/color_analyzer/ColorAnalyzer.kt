@@ -4,16 +4,11 @@ import org.hszg.sign_properties.ApproximatedColor
 import org.hszg.sign_properties.SignColor
 import org.opencv.core.*
 import org.opencv.imgcodecs.Imgcodecs
-import org.opencv.imgproc.CLAHE
 import org.opencv.imgproc.Imgproc
 import java.awt.Color
-import java.awt.Image
-import java.io.File
 import java.util.*
 import kotlin.collections.HashMap
-import kotlin.math.abs
-import kotlin.math.pow
-import kotlin.math.sqrt
+import kotlin.math.*
 
 /**
  * Analyzes the colors of a cropped sign and returns a list of SignColor objects.
@@ -30,7 +25,13 @@ fun analyzeColors(croppedSign: Mat, contour: MatOfPoint) : Pair<List<SignColor>,
     val colors = getColors(croppedSign, colorScheme)
     val whiteCenter = getWhiteCenter(croppedSign, colorScheme)
 
-    saveDebugCenterSymbol(croppedSign, contour)
+    val centerSymbol = getCenterSymbolOfSign(getSignWithApproximatedColors(croppedSign), contour, colors)
+    if (centerSymbol != null) {
+        val percentage = getPercentageOfNonTransparentPixelsForHalvesInCenterSymbol(centerSymbol)
+        println("Percentage of non-transparent pixels in left half: ${percentage.first}")
+        println("Percentage of non-transparent pixels in right half: ${percentage.second}")
+        saveDebugCenterSymbol(centerSymbol)
+    }
 
     return Pair(colors, whiteCenter)
 }
@@ -146,7 +147,8 @@ private fun getSignWithApproximatedColors(sign: Mat) : Mat {
     }
     return sign
 }
-fun findInnermostPoint(contour: MatOfPoint, imageSize: Size): Point {
+
+private fun findInitialInnermostPointFromContour(contour: MatOfPoint, imageSize: Size): Point {
     // Step 1: Create a binary mask
     val mask = Mat.zeros(imageSize, CvType.CV_8U)
     val contours = listOf(contour)
@@ -162,12 +164,62 @@ fun findInnermostPoint(contour: MatOfPoint, imageSize: Size): Point {
 
     return innermostPoint
 }
-private fun getCenterSymbolOfSign(sign: Mat, contour: MatOfPoint): Mat {
+fun findCorrectedInnermostPoint(contour: MatOfPoint, imageSize: Size, sign: Mat, approximatedColorOfCenterSymbol: ApproximatedColor): Point {
+    val initialInnermostPoint = findInitialInnermostPointFromContour(contour, imageSize)
+    // Find the closest white or black pixel to the innermost point
+    val colorScheme = findBestColorScheme(sign)
+    val pixels = getAllPixelColorsOfSignWithRowAndColumn(sign)
+    var nearestWhiteOrBlackPixel: Pair<Point?, Double> = Pair(null, Double.MAX_VALUE)
+    for ((row, col, color) in pixels) {
+        val approximatedColor = colorScheme.findBestMatchingColor(color)
+        if (approximatedColor == approximatedColorOfCenterSymbol) {
+            val distance = sqrt((row - initialInnermostPoint.y).pow(2) + (col - initialInnermostPoint.x).pow(2))
+            if (distance < nearestWhiteOrBlackPixel.second) {
+                nearestWhiteOrBlackPixel = Pair(Point(col.toDouble(), row.toDouble()), distance)
+            }
+        }
+    }
+    return nearestWhiteOrBlackPixel.first!!
+}
+private fun getApproximatedColorOfCenterSymbolBasedOnSignColors(signColors: List<SignColor>) : ApproximatedColor? {
+    val blackShare = signColors.find { it.getApproximatedColor() == ApproximatedColor.BLACK }!!.getShareOnSign()
+    val redShare = signColors.find { it.getApproximatedColor() == ApproximatedColor.RED }!!.getShareOnSign()
+    val blueShare = signColors.find { it.getApproximatedColor() == ApproximatedColor.BLUE }!!.getShareOnSign()
+
+    // If the sign has neither much red nor much blue, it is not a sign with a center symbol
+    if (redShare < 0.15 && blueShare < 0.2) {
+        return null
+    }
+
+    if (redShare > blueShare) {
+        // Sign is 'Vorfahren gewähren' so the center symbol is black
+        return if (blackShare < 0.02) {
+            null
+        } else {
+            // Sign is 'Vorfahrt von rechts' so the center symbol is white
+            ApproximatedColor.BLACK
+        }
+    }
+    // Sign is either 'Fahrtrichtung rechts' or 'Fahrtrichtung links', so the center symbol is white
+    return ApproximatedColor.WHITE
+}
+private fun getCenterSymbolColorForFeatureVector(signColors: List<SignColor>) : Double{
+    val centerSymbolColor = getApproximatedColorOfCenterSymbolBasedOnSignColors(signColors)
+    if (centerSymbolColor == null) {
+        return 0.5
+    } else {
+        val max = centerSymbolColor.getRGBAArray().size * 255.0
+        val average = centerSymbolColor.getRGBAArray().average()
+        return average / max
+    }
+}
+private fun getCenterSymbolOfSign(sign: Mat, contour: MatOfPoint, signColors: List<SignColor>): Mat? {
     // Step 1: Get all pixel colors
     val pixels = getAllPixelColorsOfSignWithRowAndColumn(sign)
 
     // Step 2: Find the innermost point of the contour
-    val innermostPoint = findInnermostPoint(contour, sign.size())
+    val centerSymbolColor = getApproximatedColorOfCenterSymbolBasedOnSignColors(signColors) ?: return null
+    val innermostPoint = findCorrectedInnermostPoint(contour, sign.size(), sign, centerSymbolColor)
     val startRow = innermostPoint.y.toInt()
     val startCol = innermostPoint.x.toInt()
 
@@ -185,6 +237,7 @@ private fun getCenterSymbolOfSign(sign: Mat, contour: MatOfPoint): Mat {
     Imgproc.floodFill(
         rgbSign, // Input image
         mask, // Mask
+
         Point(startCol.toDouble(), startRow.toDouble()), // Starting point
         Scalar(0.0), // No color change
         Rect(), // Bounding box (not used here)
@@ -196,25 +249,216 @@ private fun getCenterSymbolOfSign(sign: Mat, contour: MatOfPoint): Mat {
     // Step 7: Add the selected pixels to the result Mat
     for ((row, col, color) in pixels) {
         if (mask[row + 1, col + 1][0] > 0) { // Mask offset by 1 due to floodFill requirements
-            result.put(row, col, color.red.toDouble(), color.green.toDouble(), color.blue.toDouble(), 255.0)
+            result.put(row, col, 255.0, 255.0, 255.0, 255.0)
         }
     }
-
-    // Mark the innermost point
-    Imgproc.circle(result, innermostPoint, 10, Scalar(0.0, 0.0, 255.0), -1)
 
     return result
 }
 
+private fun getContourOfCenterSymbol(centerSymbol: Mat): MatOfPoint {
+    val grayCenterSymbol = Mat()
+    Imgproc.cvtColor(centerSymbol, grayCenterSymbol, Imgproc.COLOR_RGBA2GRAY)
+
+    val binaryCenterSymbol = Mat()
+    Imgproc.threshold(grayCenterSymbol, binaryCenterSymbol, 0.0, 255.0, Imgproc.THRESH_BINARY)
+
+    val contours = ArrayList<MatOfPoint>()
+    val hierarchy = Mat()
+    Imgproc.findContours(binaryCenterSymbol, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE)
+
+    return contours.maxByOrNull { Imgproc.contourArea(it) }!!
+
+}
+
+private fun getCenterSymbolDivisionLine(centerSymbol: Mat): Pair<Point, Point> {
+    val contour = getContourOfCenterSymbol(centerSymbol)
+    if (contour.empty()) throw IllegalArgumentException("Contour is empty!")
+
+    // Convert contour to a list of points
+    val points = contour.toList()
+
+    // Find the lowest point (max y-coordinate)
+    val lowestPoint = points.maxByOrNull { it.y }!!
+
+    // Find the point that maximizes distance while staying within the contour
+    val highestPoint = points
+        .filter {
+            lineBetweenPointsHasNoTransparentPoints(centerSymbol, lowestPoint, it)
+        }
+        .maxByOrNull { point ->
+            val dx = point.x - lowestPoint.x
+            val dy = point.y - lowestPoint.y
+            sqrt(dx * dx + dy * dy)
+        }!!
+
+    return projectLineToImageEdges(lowestPoint, highestPoint, centerSymbol.width(), centerSymbol.height())
+}
+
+private fun splitCenterSymbol(centerSymbol: Mat): Pair<Mat, Mat> {
+    val divisionLine = getCenterSymbolDivisionLine(centerSymbol) // Assume this returns Pair<Point, Point>
+
+    val width = centerSymbol.cols()
+    val height = centerSymbol.rows()
+
+    // Create masks for left and right halves
+    val leftMask = Mat.zeros(height, width, CvType.CV_8UC1)
+    val rightMask = Mat.zeros(height, width, CvType.CV_8UC1)
+
+    // Points of the line
+    val point1 = divisionLine.first
+    val point2 = divisionLine.second
+
+    // Fill masks with polygons
+    val polygonLeft = listOf(
+        Point(0.0, 0.0),
+        Point(point1.x, point1.y),
+        Point(point2.x, point2.y),
+        Point(0.0, height.toDouble())
+    )
+    val polygonRight = listOf(
+        Point(width.toDouble(), 0.0),
+        Point(point1.x, point1.y),
+        Point(point2.x, point2.y),
+        Point(width.toDouble(), height.toDouble())
+    )
+
+    Imgproc.fillPoly(leftMask, listOf(MatOfPoint(*polygonLeft.toTypedArray())), Scalar(255.0))
+    Imgproc.fillPoly(rightMask, listOf(MatOfPoint(*polygonRight.toTypedArray())), Scalar(255.0))
+
+    // Prepare output images
+    val leftHalf = Mat.zeros(height, width, CvType.CV_8UC4)
+    val rightHalf = Mat.zeros(height, width, CvType.CV_8UC4)
+
+    // Apply masks to the original image
+    Core.bitwise_and(centerSymbol, centerSymbol, leftHalf, leftMask) // Ensure RGBA is preserved
+    Core.bitwise_and(centerSymbol, centerSymbol, rightHalf, rightMask)
+
+    return Pair(leftHalf, rightHalf)
+}
 
 
-fun saveDebugCenterSymbol( sourceImage: Mat, contour : MatOfPoint) {
-    val centerSymbol = getCenterSymbolOfSign(getSignWithApproximatedColors(sourceImage), contour)
+private fun getNonTransparentPixelsInCenterSymbolHalf(centerSymbolHalf: Mat) : Int {
+    var pixels = 0;
+    for (row in 0 until centerSymbolHalf.rows()) {
+        for (col in 0 until centerSymbolHalf.cols()) {
+            val pixel = centerSymbolHalf.get(row, col)
+            if (pixel[3] > 0.0) {
+                pixels++
+            }
+        }
+    }
+    return pixels
+}
+private fun getPercentageOfNonTransparentPixelsForHalvesInCenterSymbol(centerSymbol: Mat): Pair<Double, Double> {
+    val (leftHalf, rightHalf) = splitCenterSymbol(centerSymbol)
+    val leftHalfPixels = getNonTransparentPixelsInCenterSymbolHalf(leftHalf)
+    val rightHalfPixels = getNonTransparentPixelsInCenterSymbolHalf(rightHalf)
+    val totalPixels = leftHalfPixels + rightHalfPixels
+    return Pair(leftHalfPixels.toDouble() / totalPixels, rightHalfPixels.toDouble() / totalPixels)
+}
+fun lineBetweenPointsHasNoTransparentPoints(centerSymbol: Mat, point1: Point, point2: Point): Boolean {
+    val x1 = point1.x.toInt()
+    val y1 = point1.y.toInt()
+    val x2 = point2.x.toInt()
+    val y2 = point2.y.toInt()
 
+    var dx = abs(x2 - x1)
+    var dy = -abs(y2 - y1)
+    val sx = if (x1 < x2) 1 else -1
+    val sy = if (y1 < y2) 1 else -1
+    var err = dx + dy
+
+    var x = x1
+    var y = y1
+
+    while (true) {
+        // Check transparency of the current pixel
+        if (!pointIsNotTransparent(centerSymbol, Point(x.toDouble(), y.toDouble()))) {
+            return false
+        }
+
+        // Break when the line reaches the endpoint
+        if (x == x2 && y == y2) break
+
+        val e2 = 2 * err
+        if (e2 >= dy) {
+            err += dy
+            x += sx
+        }
+        if (e2 <= dx) {
+            err += dx
+            y += sy
+        }
+    }
+
+    return true
+}
+fun projectLineToImageEdges(p1: Point, p2: Point, imageWidth: Int, imageHeight: Int): Pair<Point, Point> {
+    // Image boundaries
+    val top = 0.0
+    val bottom = imageHeight.toDouble()
+    val left = 0.0
+    val right = imageWidth.toDouble()
+
+    // Line slope (dy/dx) and y-intercept
+    val dx = p2.x - p1.x
+    val dy = p2.y - p1.y
+
+    // Handle vertical line separately to avoid division by zero
+    if (dx == 0.0) {
+        // Line is vertical, intersects top and bottom
+        return Pair(
+            Point(p1.x, top), // Top edge
+            Point(p1.x, bottom) // Bottom edge
+        )
+    }
+
+    val slope = dy / dx
+    val intercept = p1.y - slope * p1.x
+
+    // Calculate intersections with the edges of the image
+    val intersections = mutableListOf<Point>()
+
+    // Intersection with top edge (y = 0)
+    val xAtTop = -intercept / slope
+    if (xAtTop in left..right) intersections.add(Point(xAtTop, top))
+
+    // Intersection with bottom edge (y = height)
+    val xAtBottom = (bottom - intercept) / slope
+    if (xAtBottom in left..right) intersections.add(Point(xAtBottom, bottom))
+
+    // Intersection with left edge (x = 0)
+    val yAtLeft = intercept
+    if (yAtLeft in top..bottom) intersections.add(Point(left, yAtLeft))
+
+    // Intersection with right edge (x = width)
+    val yAtRight = slope * right + intercept
+    if (yAtRight in top..bottom) intersections.add(Point(right, yAtRight))
+
+    // Ensure exactly two points are returned
+    require(intersections.size == 2) { "Line does not intersect the image edges correctly." }
+
+    return Pair(intersections[0], intersections[1])
+}
+
+
+
+private fun pointIsNotTransparent(centerSymbol: Mat, point: Point): Boolean {
+    val pixel = centerSymbol.get(point.y.toInt(), point.x.toInt())
+    return pixel[3] > 0.0
+}
+
+fun saveDebugCenterSymbol(centerSymbol: Mat) {
     val classloader = Thread.currentThread().contextClassLoader
     val fileLocationFile = classloader.getResourceAsStream("debug_output_location.txt")
         ?: throw IllegalArgumentException("There is no debug_output_location in the resources folder")
     val debugProcessedFileLocation = fileLocationFile.bufferedReader().use { it.readText() } + System.currentTimeMillis() + ".jpg"
 
+    //draw division line
+    val divisionLine = getCenterSymbolDivisionLine(centerSymbol)
+    Imgproc.line(centerSymbol, divisionLine.first, divisionLine.second, Scalar(0.0, 0.0, 255.0), 1)
+
+    Imgproc.cvtColor(centerSymbol, centerSymbol, Imgproc.COLOR_RGBA2BGR)
     Imgcodecs.imwrite(debugProcessedFileLocation, centerSymbol)
 }
