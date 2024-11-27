@@ -2,10 +2,10 @@ package org.hszg.learner_implementations
 
 import org.hszg.Learner
 import org.hszg.SignClassification
-import org.hszg.neuronal_network.Model
-import org.hszg.neuronal_network.Perceptron
-import org.hszg.neuronal_network.classificationToModel
-import org.hszg.neuronal_network.modelToClassification
+import org.hszg.learner_implementations.neuronal_network.Model
+import org.hszg.learner_implementations.neuronal_network.Perceptron
+import org.hszg.learner_implementations.neuronal_network.classificationToModel
+import org.hszg.learner_implementations.neuronal_network.modelToClassification
 import org.hszg.training.TrainingData
 
 class NeuronalNetwork : Learner {

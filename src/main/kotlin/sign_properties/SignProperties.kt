@@ -14,6 +14,6 @@ class SignProperties(private val colors: List<SignColor>, private val cornersCou
     }
 
     fun toFeatureVector() : List<Double> {
-        return listOf(colors.map { it.getShareOnSign() }, listOf(cornersCountNormalized), listOf(centerSymbolAnalyzerResult.getCenterSymbolColorAvg(), centerSymbolAnalyzerResult.getPercentagePixelsLeft(), centerSymbolAnalyzerResult.getPercentagePixelsRight())).flatten()
+        return listOf(colors.sortedBy { it.getApproximatedColor().ordinal }.map { it.getShareOnSign() }, listOf(cornersCountNormalized), listOf(centerSymbolAnalyzerResult.getCenterSymbolColorAvg(), centerSymbolAnalyzerResult.getPercentagePixelsLeft(), centerSymbolAnalyzerResult.getPercentagePixelsRight())).flatten()
     }
 }

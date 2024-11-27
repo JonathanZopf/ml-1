@@ -1,4 +1,4 @@
-package org.hszg.neuronal_network
+package org.hszg.learner_implementations.neuronal_network
 
 class Perceptron {
     private var weights = ArrayList<Double>()

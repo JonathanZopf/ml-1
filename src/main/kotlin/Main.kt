@@ -10,13 +10,14 @@ import org.hszg.sign_analyzer.analyzeSign
 import org.hszg.training.TrainingData
 import org.hszg.training.readTrainingData
 import org.hszg.training.writeTrainingData
+import kotlin.math.sqrt
 
 fun main() {
     OpenCV.loadLocally()
     println("Getting all images ...")
     println("Welcome. Do you want to run the program in debug mode? This will stop the program if an error occurs and write debug images. Press y for yes and any other key for no.")
     val debugMode = readlnOrNull() == "y"
-    val signs = getAllSignsForTrainingAndClassification(1000, 500)
+    val signs = getAllSignsForTrainingAndClassification(10000, 500)
 
     var input: String? = null
     while (input !in listOf("t", "c")) {
@@ -57,7 +58,9 @@ fun main() {
             }
 
             val learnerImplementation: Learner = when (inputClassification) {
-                "k" -> KNearestNeighbor()
+                "k" -> KNearestNeighbor(3) { a, b ->
+                    sqrt(a.zip(b).map { (a, b) -> (a - b) * (a - b) }.sum())
+                }
                 "d" -> DecisionTree()
                 "n" -> NeuronalNetwork()
                 else -> throw IllegalStateException("This should never happen!")

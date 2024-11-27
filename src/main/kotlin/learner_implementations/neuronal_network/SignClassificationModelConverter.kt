@@ -1,4 +1,4 @@
-package org.hszg.neuronal_network
+package org.hszg.learner_implementations.neuronal_network
 
 import org.hszg.SignClassification
 class Model(val bit1: Boolean, val bit2: Boolean, val bit3: Boolean) {
